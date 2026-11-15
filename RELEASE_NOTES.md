@@ -1,14 +1,21 @@
-### ✨ Novedades de esta versión
+### 🎉 Lanzamiento inicial de NotifAula (v1.0.0)
 
-- **Comprobación más puntual (cada 5 minutos)**: Mejorada la sincronización en segundo plano para que los avisos lleguen puntualmente sin retrasos.
-- **Tiempo de última actualización en vivo**: El indicador *"Actualizado hace X min"* de la pantalla principal ahora se refresca automáticamente al abrir o volver a la app.
-- **Nombres de asignaturas y textos más naturales**:
-  - Las asignaturas ahora se muestran con sus mayúsculas correctas (por ejemplo: *Ingeniería del Software*, *Sistemas Operativos*, *Arquitectura de Computadores*).
-  - Los avisos de mensajes y fechas distinguen automáticamente entre singular y plural (*"1 mensaje nuevo"* vs *"2 mensajes nuevos"*).
-- **Botón de Información y Privacidad (`ⓘ`)**: Nuevo acceso rápido desde la esquina superior para consultar la información de la app y la política de privacidad en cualquier momento.
+Primera versión lista para usar de **NotifAula**, diseñada para recibir las notificaciones del Aula Virtual de la UAL al instante y abrirlas directamente en el navegador de tu móvil.
+
+#### ✨ Qué incluye
+- **Avisos rápidos (cada 5 minutos)**: Comprobación puntual en segundo plano sin notificaciones fijas molestas.
+- **Notificaciones completas**:
+  - 🎓 **Calificaciones**: Nota sobre el total, media y comentarios de corrección del profesor.
+  - 📄 **Contenidos y archivos**: Indica el tipo de material y la ruta exacta de carpetas donde se ha subido (*ej. Teoría › Tema 5*).
+  - 📢 **Anuncios**: Texto completo del anuncio y fecha de publicación.
+  - ✉️ **Mensajes**: Aviso por asignatura con remitente, asunto y vista previa.
+  - 📅 **Entregas y tareas**: Nuevas fechas límite del calendario.
+- **Apertura directa en tu navegador**: Al tocar cualquier notificación te lleva directamente al enlace en el navegador predeterminado de tu teléfono.
+- **100 % Privada y segura**: Inicio de sesión en la web oficial (`aulavirtual.ual.es`), sin servidores intermedios y sin acceso a tu contraseña.
 
 ---
 
-### 📲 Cómo instalar o actualizar
+### 📲 Cómo instalarla en Android
 1. Descarga el archivo **`NotifAula.apk`** que aparece abajo en **Assets**.
-2. Ábrelo en tu móvil Android para instalar o actualizar **NotifAula** (no perderás tu sesión).
+2. Ábrelo en tu móvil Android para instalar **NotifAula**.
+3. Inicia sesión y acepta el permiso de notificaciones.
