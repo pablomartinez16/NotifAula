@@ -439,10 +439,10 @@ class SyncRepository(context: Context) {
         // Intentar obtener detalle de las conversaciones del curso (asunto / remitente / texto)
         val details = fetchCourseMessagePreview(cid)
 
-        val title = if (details?.subject != null) {
-            "✉️ ${course.shortName}: ${details.subject}"
-        } else {
-            "✉️ $delta mensaje(s) nuevo(s) en ${course.shortName}"
+        val title = when {
+            details?.subject != null -> "✉️ ${course.shortName}: ${details.subject}"
+            delta == 1 -> "✉️ 1 mensaje nuevo en ${course.shortName}"
+            else -> "✉️ $delta mensajes nuevos en ${course.shortName}"
         }
 
         val body = buildString {
@@ -451,8 +451,10 @@ class SyncRepository(context: Context) {
             }
             if (!details?.preview.isNullOrBlank()) {
                 append(details!!.preview)
+            } else if (unread == 1) {
+                append("Tienes 1 conversación sin leer en ${course.shortName}")
             } else {
-                append("Tienes $unread conversación(es) sin leer en ${course.shortName}")
+                append("Tienes $unread conversaciones sin leer en ${course.shortName}")
             }
         }.trim()
 
@@ -583,18 +585,29 @@ class SyncRepository(context: Context) {
         private const val MAX_CONTENT_DEPTH = 5
         private const val MAX_CONTENT_ITEMS = 1500
 
-        /** "[P] - NOMBRE DE LA ASIGNATURA - CÓDIGO[...] - ..." → "Nombre de la asignatura" */
+        private val LOWERCASE_WORDS = setOf(
+            "de", "del", "la", "las", "el", "los", "y", "e", "o", "u", "a", "en", "con", "por", "para", "al"
+        )
+        private val ROMAN_NUMERALS = setOf("i", "ii", "iii", "iv", "v", "vi")
+
+        /** "[P] - INGENIERÍA DEL SOFTWARE - CÓDIGO[...] - ..." → "Ingeniería del Software" */
         fun shortCourseName(full: String): String {
+            val locale = Locale("es", "ES")
             val parts = full.split(" - ").map { it.trim() }.filter { it.isNotEmpty() }
             val candidate = when {
                 parts.size >= 2 && parts[0].startsWith("[") -> parts[1]
                 parts.isNotEmpty() -> parts[0]
                 else -> full
             }
-            val pretty = if (candidate == candidate.uppercase())
-                candidate.lowercase(Locale("es", "ES")).replaceFirstChar { it.titlecase(Locale("es", "ES")) }
-            else candidate
-            return pretty.take(60)
+            val words = candidate.lowercase(locale).split(Regex("\\s+")).filter { it.isNotEmpty() }
+            val formatted = words.mapIndexed { index, word ->
+                when {
+                    word in ROMAN_NUMERALS -> word.uppercase(locale)
+                    index > 0 && word in LOWERCASE_WORDS -> word
+                    else -> word.replaceFirstChar { it.titlecase(locale) }
+                }
+            }.joinToString(" ")
+            return formatted.take(60)
         }
 
         fun htmlToText(html: String?, maxChars: Int = 500): String {

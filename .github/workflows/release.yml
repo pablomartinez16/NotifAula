@@ -9,6 +9,7 @@ on:
       - 'build.gradle.kts'
       - 'settings.gradle.kts'
       - 'gradle/**'
+      - 'RELEASE_NOTES.md'
       - '.github/workflows/release.yml'
     tags:
       - 'v*'
@@ -55,10 +56,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: "NotifAula ${{ github.ref_type == 'tag' && github.ref_name || format('v1.0.{0}', github.run_number) }}"
           make_latest: "true"
-          body: |
-            ### 📲 Descarga e instalación en Android
-            1. Descarga el archivo **`NotifAula.apk`** que aparece abajo en **Assets**.
-            2. Ábrelo en tu móvil Android para instalar **NotifAula**.
-            3. Inicia sesión en la web oficial del Aula Virtual (`aulavirtual.ual.es`) y activa el permiso de notificaciones.
+          body_path: RELEASE_NOTES.md
           files: NotifAula.apk
           prerelease: false

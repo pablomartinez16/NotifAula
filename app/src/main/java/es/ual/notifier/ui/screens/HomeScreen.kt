@@ -3,6 +3,7 @@ package es.ual.notifier.ui.screens
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -54,6 +55,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,6 +64,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,21 +110,55 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
         .collectAsState(initial = emptyList())
     val syncing = workInfos.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
 
-    // Última comprobación / error (se refresca periódicamente)
+    // Última comprobación / error y reloj en vivo (se refresca al volver a la app, al cambiar prefs y cada 15s)
     var lastPoll by remember { mutableLongStateOf(prefs.getLong(Constants.PREF_LAST_POLL, 0)) }
     var lastError by remember { mutableStateOf(prefs.getString(Constants.PREF_LAST_ERROR, null)) }
-    var tick by remember { mutableLongStateOf(0L) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var notifGranted by remember { mutableStateOf(hasNotifPermission(context)) }
+    var batteryOptimized by remember { mutableStateOf(isBatteryOptimized(context)) }
+
+    fun refreshState() {
+        lastPoll = prefs.getLong(Constants.PREF_LAST_POLL, 0)
+        lastError = prefs.getString(Constants.PREF_LAST_ERROR, null)
+        now = System.currentTimeMillis()
+        notifGranted = hasNotifPermission(context)
+        batteryOptimized = isBatteryOptimized(context)
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, prefs) {
+        val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            refreshState()
+        }
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
+
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshState()
+                // Si han pasado >= 5 minutos desde la última comprobación, sincronizar al instante
+                if (System.currentTimeMillis() - prefs.getLong(Constants.PREF_LAST_POLL, 0L) >=
+                    Constants.ALARM_INTERVAL_MINUTES * 60_000L
+                ) {
+                    UALNotifierApp.syncNow(context)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(syncing) {
         while (true) {
-            lastPoll = prefs.getLong(Constants.PREF_LAST_POLL, 0)
-            lastError = prefs.getString(Constants.PREF_LAST_ERROR, null)
-            tick = System.currentTimeMillis()
-            delay(5_000)
+            refreshState()
+            delay(15_000)
         }
     }
 
     // Permiso de notificaciones (Android 13+)
-    var notifGranted by remember { mutableStateOf(hasNotifPermission(context)) }
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         notifGranted = it
     }
@@ -128,7 +167,6 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
             permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    val batteryOptimized = remember(tick) { isBatteryOptimized(context) }
 
     var confirmLogout by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
@@ -179,7 +217,7 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
         ) {
             item {
                 if (syncing) LinearProgressIndicator(Modifier.fillMaxWidth())
-                StatusCard(lastPoll, lastError, unread)
+                StatusCard(lastPoll, lastError, unread, now)
             }
             if (!notifGranted) item {
                 WarningCard(
@@ -194,19 +232,24 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
             }
             if (batteryOptimized) item {
                 WarningCard(
-                    "Para recibir avisos puntuales, pon Batería en 'Sin restricciones' dentro de la info de la app.",
-                    "Ajustes"
+                    "Permite el uso en segundo plano sin restricciones de batería para comprobar cada 5 min.",
+                    "Permitir"
                 ) {
-                    val i = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    val i = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                         .setData(Uri.parse("package:${context.packageName}"))
-                    runCatching { context.startActivity(i) }
+                    runCatching { context.startActivity(i) }.onFailure {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                .setData(Uri.parse("package:${context.packageName}"))
+                        )
+                    }
                 }
             }
             if (notifications.isEmpty()) {
                 item { EmptyState() }
             } else {
                 items(notifications, key = { it.id }) { n ->
-                    NotificationCard(n) {
+                    NotificationCard(n, now) {
                         scope.launch { repo.markAsRead(n.id) }
                         OpenLinkActivity.openInBrowser(context, n.url)
                     }
@@ -243,7 +286,7 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
 }
 
 @Composable
-private fun StatusCard(lastPoll: Long, lastError: String?, unread: Int) {
+private fun StatusCard(lastPoll: Long, lastError: String?, unread: Int, now: Long) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp, 16.dp, 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -262,7 +305,7 @@ private fun StatusCard(lastPoll: Long, lastError: String?, unread: Int) {
             Text(
                 when {
                     !lastError.isNullOrBlank() -> "⚠️ $lastError"
-                    lastPoll > 0 -> "Actualizado ${timeAgo(lastPoll)}"
+                    lastPoll > 0 -> "Actualizado ${timeAgo(lastPoll, now)}"
                     else -> "Sincronizando…"
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -307,7 +350,7 @@ private fun EmptyState() {
 }
 
 @Composable
-private fun NotificationCard(n: NotificationEntity, onClick: () -> Unit) {
+private fun NotificationCard(n: NotificationEntity, now: Long, onClick: () -> Unit) {
     val (icon, color) = typeStyle(n.type)
     Card(
         modifier = Modifier
@@ -343,7 +386,7 @@ private fun NotificationCard(n: NotificationEntity, onClick: () -> Unit) {
                     maxLines = 6, overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    timeAgo(n.timestamp), style = MaterialTheme.typography.labelSmall,
+                    timeAgo(n.timestamp, now), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             }
@@ -374,13 +417,15 @@ private fun isBatteryOptimized(context: Context): Boolean {
     return !pm.isIgnoringBatteryOptimizations(context.packageName)
 }
 
-fun timeAgo(ts: Long): String {
-    val diff = System.currentTimeMillis() - ts
+fun timeAgo(ts: Long, now: Long = System.currentTimeMillis()): String {
+    val diff = (now - ts).coerceAtLeast(0L)
+    val days = diff / 86_400_000L
     return when {
         diff < 60_000 -> "ahora mismo"
         diff < 3_600_000 -> "hace ${diff / 60_000} min"
         diff < 86_400_000 -> "hace ${diff / 3_600_000} h"
-        diff < 7 * 86_400_000L -> "hace ${diff / 86_400_000} días"
+        days == 1L -> "hace 1 día"
+        days < 7L -> "hace $days días"
         else -> SimpleDateFormat("d MMM yyyy, HH:mm", Locale("es", "ES")).format(Date(ts))
     }
 }
