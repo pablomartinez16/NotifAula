@@ -1,4 +1,4 @@
-const CACHE_NAME = "notifaula-pwa-v3";
+const CACHE_NAME = "notifaula-pwa-v4";
 const ASSETS = [
   "./pwa.html",
   "./manifest.json",

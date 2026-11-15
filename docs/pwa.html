@@ -781,7 +781,7 @@
     });
 
     // Safari Bookmarklet generator (runs 100% inside aulavirtual.ual.es without sending data outside)
-    const bookmarkletCode = `javascript:(async()=>{if(location.hostname!=='aulavirtual.ual.es'){alert('Abre primero aulavirtual.ual.es en Safari y vuelve a pulsar este marcador.');location.href='https://aulavirtual.ual.es/ultra/stream';return;}const h={'Accept':'application/json'};const m=document.cookie.match(/xsrf:([0-9a-fA-F-]{16,64})/);if(m)h['X-Blackboard-XSRF']=m[1];const g=async(u)=>(await fetch(u,{credentials:'include',headers:h})).json();const me=await g('/learn/api/v1/users/me');const mem=await g('/learn/api/v1/users/'+me.id+'/memberships?expand=course.effectiveAvailability&limit=200');const items=[];for(const x of (mem.results||[])){const c=x.course;if(!c||c.isClosed)continue;const cid=c.id;const cname=(c.displayName||c.name||cid).split(' - ').slice(-1)[0];const ann=await g('/learn/api/v1/courses/'+cid+'/announcements?limit=3');for(const a of (ann.results||[])){items.push('📢 ['+cname+'] '+(a.title||'Anuncio'));}}alert('🔔 NotifAula — Últimos avisos:\\n\\n'+(items.slice(0,12).join('\\n')||'Sin anuncios recientes'));})();`;
+    const bookmarkletCode = `javascript:(async()=>{if(location.hostname!=='aulavirtual.ual.es'){alert('Abre primero aulavirtual.ual.es en Safari y vuelve a pulsar este marcador.');location.href='https://aulavirtual.ual.es/ultra/stream';return;}const h={'Accept':'application/json'};const m=decodeURIComponent(document.cookie||'').match(/xsrf:([0-9a-fA-F-]{16,64})/);if(m)h['X-Blackboard-XSRF']=m[1];const g=async(u)=>(await fetch('https://aulavirtual.ual.es'+u,{credentials:'include',headers:h})).json();const me=await g('/learn/api/v1/users/me');const mem=await g('/learn/api/v1/users/'+me.id+'/memberships?expand=course.effectiveAvailability&limit=200');const items=[];for(const x of (mem.results||[])){const c=x.course;if(!c||c.isClosed)continue;const cid=c.id;const cname=(c.displayName||c.name||cid).split(' - ').slice(-1)[0];const ann=await g('/learn/api/v1/courses/'+cid+'/announcements?limit=3');for(const a of (ann.results||[])){items.push('📢 ['+cname+'] '+(a.title||'Anuncio'));}}alert('🔔 NotifAula — Últimos avisos:\\n\\n'+(items.slice(0,12).join('\\n')||'Sin anuncios recientes'));})();`;
 
     document.getElementById("btn-copy-bookmarklet").addEventListener("click", async () => {
       try {
@@ -797,6 +797,28 @@
     setInterval(render, 15000);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) render();
+    });
+
+    // Forzar descarga directa de NotifAula.js como archivo binario para que iOS/navegadores no lo abran como texto
+    document.querySelectorAll('a[download="NotifAula.js"]').forEach((link) => {
+      link.addEventListener("click", async (e) => {
+        e.preventDefault();
+        try {
+          const res = await fetch(link.getAttribute("href"));
+          const code = await res.text();
+          const blob = new Blob([code], { type: "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "NotifAula.js";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.createObjectURL(url), 2000);
+        } catch (err) {
+          window.location.href = link.getAttribute("href");
+        }
+      });
     });
   </script>
 </body>

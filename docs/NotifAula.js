@@ -172,11 +172,16 @@ async function interactiveLogin() {
   await wv.loadURL(ULTRA_URL);
   await wv.present(false);
 
-  const me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
+  let me = null;
+  try {
+    me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
+  } catch (e) {
+    me = null;
+  }
   if (!me || !me.id) {
     const a = new Alert();
     a.title = "Sesión no detectada";
-    a.message = "Inicia sesión hasta que cargue la página principal de tus cursos en el Aula Virtual y luego pulsa 'Cerrar' arriba a la izquierda.";
+    a.message = "Inicia sesión hasta que cargue la página principal de tus cursos en el Aula Virtual (https://aulavirtual.ual.es/ultra) y vuelve a intentarlo.";
     a.addAction("Entendido");
     await a.present();
     return null;
@@ -191,15 +196,19 @@ async function interactiveLogin() {
 }
 
 async function evaluateApiInWebView(wv, pathAndQuery) {
+  const fullUrl = pathAndQuery.startsWith("http")
+    ? pathAndQuery
+    : `${BASE_URL}${pathAndQuery.startsWith("/") ? "" : "/"}${pathAndQuery}`;
   const js = `
     (async function() {
       try {
         const headers = { 'Accept': 'application/json, text/plain, */*' };
-        const m = document.cookie.match(/xsrf:([0-9a-fA-F-]{16,64})/);
+        const decodedCookie = decodeURIComponent(document.cookie || '');
+        const m = decodedCookie.match(/xsrf:([0-9a-fA-F-]{16,64})/);
         if (m && m[1]) {
           headers['X-Blackboard-XSRF'] = m[1];
         }
-        const res = await fetch(${JSON.stringify(pathAndQuery)}, {
+        const res = await fetch(${JSON.stringify(fullUrl)}, {
           method: 'GET',
           credentials: 'include',
           headers: headers
@@ -487,12 +496,13 @@ async function runSync() {
 }
 
 async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, state, out) {
-  if (depth > 4 || out.length > 800) return;
+  if (depth > 2 || out.length > 400) return;
   const resp = await evaluateApiInWebView(
     wv,
     `/learn/api/v1/courses/${encodeURIComponent(cid)}/contents/${encodeURIComponent(parentId)}/children?@view=Summary&limit=200`
   );
   const children = (resp && resp.results) || [];
+  const subFolders = [];
   for (const item of children) {
     out.push({ item, breadcrumb });
     if (isFolderItem(item) && item.id) {
@@ -500,9 +510,14 @@ async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, sta
       const oldFp = state.seen[`content:${item.id}`];
       const fp = String(item.modifiedDate || "");
       if (full || oldFp === undefined || oldFp !== fp) {
-        await walkCourseContent(wv, cid, item.id, nextCrumb, depth + 1, full, state, out);
+        subFolders.push({ id: item.id, crumb: nextCrumb });
       }
     }
+  }
+  if (subFolders.length > 0) {
+    await Promise.all(
+      subFolders.map(f => walkCourseContent(wv, cid, f.id, f.crumb, depth + 1, full, state, out))
+    );
   }
 }
 
