@@ -1,6 +1,9 @@
 # 🔔 NotifAula (No oficial)
 
-> **📥 [Descargar última versión (.APK) en GitHub Releases](../../releases/latest)**
+### **¿Estás harto de que la app oficial no funcione como debería?**
+**Simplemente recibe una notificación y entra a través de la web. Más sencillo, sin rodeos ni fallos.**
+
+> **📥 [Descargar última versión (`NotifAula.apk`) en GitHub Releases](../../releases/latest)** · **🌐 [Ver página web](https://pablomartinez16.github.io/NotifAula/)**
 >
 > **Aviso legal:** Aplicación independiente y de código abierto **no oficial**. No está afiliada, respaldada ni patrocinada por la Universidad de Almería (UAL) ni por Anthology / Blackboard. Consulta la [Política de Privacidad](PRIVACY.md) y la [Licencia MIT](LICENSE).
 
