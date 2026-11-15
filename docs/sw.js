@@ -1,8 +1,11 @@
-const CACHE_NAME = "notifaula-pwa-v1";
+const CACHE_NAME = "notifaula-pwa-v3";
 const ASSETS = [
   "./pwa.html",
   "./manifest.json",
   "./icon.svg",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./apple-touch-icon.png",
   "./NotifAula.js"
 ];
 
@@ -29,7 +32,7 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   let data = {
-    title: "🔔 NotifAula",
+    title: "NotifAula",
     body: "Nueva novedad en el Aula Virtual de la UAL",
     url: "https://aulavirtual.ual.es/ultra/stream"
   };
@@ -43,8 +46,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "./icon.svg",
-      badge: "./icon.svg",
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
       data: { url: data.url || "https://aulavirtual.ual.es/ultra/stream" }
     })
   );

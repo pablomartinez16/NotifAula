@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="NotifAula" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
-  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Catamaran:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -489,7 +489,11 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="topbar-title">
-        <span>🔔</span>
+        <span style="width: 32px; height: 32px; border-radius: 9px; background: #0055A5; display: inline-grid; place-items: center; flex-shrink: 0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true">
+            <path d="M12,22c1.1,0 2,-0.9 2,-2h-4c0,1.1 0.89,2 2,2zM18,16v-5c0,-3.07 -1.64,-5.64 -4.5,-6.32V4c0,-0.83 -0.67,-1.5 -1.5,-1.5s-1.5,0.67 -1.5,1.5v0.68C7.63,5.36 6,7.92 6,11v5l-2,2v1h16v-1l-2,-2z"/>
+          </svg>
+        </span>
         <span>NotifAula</span>
       </div>
       <div class="topbar-actions">
@@ -530,9 +534,6 @@
       <div style="display: flex; flex-wrap: wrap; gap: 8px;">
         <button id="btn-enable-webpush" class="btn btn-primary">
           🔔 Activar notificaciones de la PWA
-        </button>
-        <button id="btn-test-notif" class="btn btn-outline">
-          ✨ Probar aviso en iPhone
         </button>
       </div>
     </section>
@@ -630,7 +631,11 @@
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return { user: null, lastPoll: 0, history: [] };
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.history)) {
+          parsed.history = parsed.history.filter(x => !String(x.id || "").startsWith("demo:"));
+        }
+        return parsed;
       } catch (e) {
         return { user: null, lastPoll: 0, history: [] };
       }
@@ -678,8 +683,12 @@
       if (!items.length) {
         listEl.innerHTML = `
           <div class="empty-state">
-            <div class="empty-icon">🔔</div>
-            <strong>Todavía no hay notificaciones</strong>
+            <div class="empty-icon" style="display: flex; justify-content: center;">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="rgba(0, 85, 165, 0.35)" aria-hidden="true">
+                <path d="M12,22c1.1,0 2,-0.9 2,-2h-4c0,1.1 0.89,2 2,2zM18,16v-5c0,-3.07 -1.64,-5.64 -4.5,-6.32V4c0,-0.83 -0.67,-1.5 -1.5,-1.5s-1.5,0.67 -1.5,1.5v0.68C7.63,5.36 6,7.92 6,11v5l-2,2v1h16v-1l-2,-2z"/>
+              </svg>
+            </div>
+            <strong>Sin notificaciones nuevas</strong>
             <p style="margin-top: 4px; font-size: 0.88rem;">
               Cuando haya nuevas notas, anuncios, materiales o mensajes en tus asignaturas aparecerán aquí y podrás abrirlos directamente en Safari.
             </p>
@@ -768,33 +777,6 @@
         alert("✅ ¡Notificaciones nativas activadas en esta Web App!");
       } else {
         alert("Permiso no concedido. Asegúrate de haber añadido la app a la pantalla de inicio.");
-      }
-    });
-
-    document.getElementById("btn-test-notif").addEventListener("click", async () => {
-      const sample = {
-        id: "demo:" + Date.now(),
-        type: "GRADE",
-        courseName: "Ingeniería del Software",
-        title: "🎓 Nueva nota: Práctica 2",
-        body: "📊 Nota: 9,5 / 10 — Toca para abrir en Safari",
-        url: "https://aulavirtual.ual.es/ultra/stream",
-        timestamp: Date.now(),
-        isRead: false
-      };
-      const state = loadPwaState();
-      state.lastPoll = Date.now();
-      state.history = [sample, ...(state.history || [])];
-      savePwaState(state);
-      render();
-
-      if ("Notification" in window && Notification.permission === "granted" && "serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification(sample.title, {
-          body: "[" + sample.courseName + "] " + sample.body,
-          icon: "./icon.svg",
-          data: { url: sample.url }
-        });
       }
     });
 
