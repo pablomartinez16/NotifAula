@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - '.github/workflows/release.yml'
     tags:
       - 'v*'
   workflow_dispatch:
@@ -30,7 +36,7 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Build Release & Debug APK
+      - name: Build APK
         run: gradle assembleDebug
 
       - name: Rename APK to NotifAula.apk
@@ -45,8 +51,10 @@ jobs:
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.0.0' }}
-          name: "NotifAula ${{ github.ref_type == 'tag' && github.ref_name || 'v1.0.0' }}"
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          name: "NotifAula ${{ github.ref_type == 'tag' && github.ref_name || format('v1.0.{0}', github.run_number) }}"
+          make_latest: "true"
           body: |
             ### 📲 Descarga e instalación en Android
             1. Descarga el archivo **`NotifAula.apk`** que aparece abajo en **Assets**.
