@@ -11,7 +11,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "es.ual.notifier"
+        applicationId = "es.notifaula.app"
         minSdk = 28
         targetSdk = 35
         versionCode = 1
