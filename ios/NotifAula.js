@@ -185,6 +185,14 @@ async function interactiveLogin() {
     me = null;
   }
   if (!me || !me.id) {
+    try {
+      await wv.loadURL(`${BASE_URL}/learn/api/v1/utilities/timeUntilBbSessionInactive?forceLogout=false`);
+      me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
+    } catch (e) {
+      me = null;
+    }
+  }
+  if (!me || !me.id) {
     const a = new Alert();
     a.title = "Sesión no detectada";
     a.message = "Inicia sesión hasta que cargue la página principal de tus cursos en el Aula Virtual (https://aulavirtual.ual.es/ultra) y vuelve a intentarlo.";
@@ -203,46 +211,53 @@ async function interactiveLogin() {
 
 /**
  * Ejecuta una petición autenticada a la API interna de Blackboard Ultra
- * desde el contexto del WebView (que comparte el almacén de cookies de WebKit
- * y extrae automáticamente el token X-Blackboard-XSRF).
+ * desde el contexto del WebView de Scriptable (usando completion() + null final
+ * requerido por WKWebView en iOS cuando useCallback = true).
  */
 async function evaluateApiInWebView(wv, pathAndQuery) {
   const fullUrl = pathAndQuery.startsWith("http")
     ? pathAndQuery
     : `${BASE_URL}${pathAndQuery.startsWith("/") ? "" : "/"}${pathAndQuery}`;
   const js = `
-    (async function() {
-      try {
-        const headers = { 'Accept': 'application/json, text/plain, */*' };
-        const decodedCookie = decodeURIComponent(document.cookie || '');
-        const m = decodedCookie.match(/xsrf:([0-9a-fA-F-]{16,64})/);
-        if (m && m[1]) {
-          headers['X-Blackboard-XSRF'] = m[1];
+    (function() {
+      const done = (typeof completion === 'function') ? completion : function(v) { return v; };
+      (async function() {
+        try {
+          const headers = { 'Accept': 'application/json, text/plain, */*' };
+          const decodedCookie = decodeURIComponent(document.cookie || '');
+          const m = decodedCookie.match(/xsrf:([0-9a-fA-F-]{16,64})/);
+          if (m && m[1]) {
+            headers['X-Blackboard-XSRF'] = m[1];
+          }
+          const res = await fetch(${JSON.stringify(fullUrl)}, {
+            method: 'GET',
+            credentials: 'include',
+            headers: headers
+          });
+          if (res.status === 401 || res.status === 403) {
+            done(JSON.stringify({ __authError: true, status: res.status }));
+            return;
+          }
+          if (!res.ok) {
+            done(JSON.stringify({ __httpError: true, status: res.status }));
+            return;
+          }
+          const text = await res.text();
+          if (text.trim().startsWith('<')) {
+            done(JSON.stringify({ __authError: true, status: 401 }));
+            return;
+          }
+          done(text);
+        } catch (err) {
+          done(JSON.stringify({ __networkError: true, message: String(err) }));
         }
-        const res = await fetch(${JSON.stringify(fullUrl)}, {
-          method: 'GET',
-          credentials: 'include',
-          headers: headers
-        });
-        if (res.status === 401 || res.status === 403) {
-          return JSON.stringify({ __authError: true, status: res.status });
-        }
-        if (!res.ok) {
-          return JSON.stringify({ __httpError: true, status: res.status });
-        }
-        const text = await res.text();
-        if (text.trim().startsWith('<')) {
-          return JSON.stringify({ __authError: true, status: 401 });
-        }
-        return text;
-      } catch (err) {
-        return JSON.stringify({ __networkError: true, message: String(err) });
-      }
+      })();
     })();
+    null;
   `;
   const raw = await wv.evaluateJavaScript(js, true);
   if (!raw) return null;
-  const parsed = JSON.parse(raw);
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
   if (parsed && parsed.__authError) {
     throw new Error("SESSION_EXPIRED");
   }
@@ -250,6 +265,53 @@ async function evaluateApiInWebView(wv, pathAndQuery) {
     return null;
   }
   return parsed;
+}
+
+/**
+ * Ejecuta un lote de peticiones GET en paralelo dentro de una única llamada
+ * a WKWebView.evaluateJavaScript (evitando colisiones de completion en iOS).
+ */
+async function evaluateBatchInWebView(wv, paths) {
+  if (!paths.length) return [];
+  const fullUrls = paths.map(p =>
+    p.startsWith("http") ? p : `${BASE_URL}${p.startsWith("/") ? "" : "/"}${p}`
+  );
+  const js = `
+    (function() {
+      const done = (typeof completion === 'function') ? completion : function(v) { return v; };
+      (async function() {
+        try {
+          const headers = { 'Accept': 'application/json, text/plain, */*' };
+          const decodedCookie = decodeURIComponent(document.cookie || '');
+          const m = decodedCookie.match(/xsrf:([0-9a-fA-F-]{16,64})/);
+          if (m && m[1]) {
+            headers['X-Blackboard-XSRF'] = m[1];
+          }
+          const urls = ${JSON.stringify(fullUrls)};
+          const results = await Promise.all(urls.map(async function(u) {
+            try {
+              const r = await fetch(u, { method: 'GET', credentials: 'include', headers: headers });
+              if (!r.ok) return null;
+              return await r.json();
+            } catch (e) {
+              return null;
+            }
+          }));
+          done(JSON.stringify(results));
+        } catch (err) {
+          done("[]");
+        }
+      })();
+    })();
+    null;
+  `;
+  const raw = await wv.evaluateJavaScript(js, true);
+  if (!raw) return [];
+  try {
+    return typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return [];
+  }
 }
 
 // ───────────────────────── Sincronización completa ─────────────────────────
@@ -528,10 +590,19 @@ async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, sta
       }
     }
   }
-  if (subFolders.length > 0) {
-    await Promise.all(
-      subFolders.map(f => walkCourseContent(wv, cid, f.id, f.crumb, depth + 1, full, state, out))
+  if (subFolders.length > 0 && depth + 1 <= 2) {
+    const paths = subFolders.map(
+      f => `/learn/api/v1/courses/${encodeURIComponent(cid)}/contents/${encodeURIComponent(f.id)}/children?@view=Summary&limit=200`
     );
+    const batchResults = await evaluateBatchInWebView(wv, paths);
+    for (let i = 0; i < subFolders.length; i++) {
+      const folder = subFolders[i];
+      const subResp = batchResults[i];
+      const subChildren = (subResp && subResp.results) || [];
+      for (const subItem of subChildren) {
+        out.push({ item: subItem, breadcrumb: folder.crumb });
+      }
+    }
   }
 }
 
