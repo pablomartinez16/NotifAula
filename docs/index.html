@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NotifAula — Notificaciones del Aula Virtual UAL para Android</title>
+  <title>NotifAula — Notificaciones del Aula Virtual UAL para Android e iOS</title>
   <meta name="description" content="¿Estás harto de que la app oficial no funcione como debería? Simplemente recibe una notificación y entra a través de la web. Más sencillo, sin rodeos ni fallos." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -517,14 +517,14 @@
         </p>
         <div class="hero-cta">
           <a id="hero-download-link" href="https://github.com/pablomartinez16/NotifAula/releases/latest" class="btn btn-primary" target="_blank" rel="noopener">
-            📲 Descargar APK (GitHub Releases)
+            🤖 Descargar para Android (APK)
           </a>
-          <a id="hero-repo-link" href="https://github.com/pablomartinez16/NotifAula" class="btn btn-secondary" target="_blank" rel="noopener">
-            Ver repositorio en GitHub
+          <a href="#ios" class="btn btn-secondary">
+            🍎 Usar en iPhone (iOS)
           </a>
         </div>
         <div class="hero-meta">
-          <span>✔ Android 9.0+</span>
+          <span>✔ Android 9.0+ e iOS (Scriptable)</span>
           <span>✔ 100 % Gratis y Open Source</span>
           <span>✔ Sin servidores intermedios</span>
         </div>
@@ -608,11 +608,11 @@ Hola, podéis entregarlo hasta el viernes a las 23:59...</div>
       </div>
     </section>
 
-    <!-- CÓMO INSTALAR -->
+    <!-- CÓMO INSTALAR EN ANDROID -->
     <section id="descargar" class="steps">
       <div class="container">
         <div class="section-title">
-          <h2>Cómo instalarla en 3 pasos</h2>
+          <h2>🤖 Cómo instalarla en Android</h2>
           <p>Al distribuirse directamente desde GitHub Releases, puedes instalarla gratis en menos de un minuto.</p>
         </div>
 
@@ -635,6 +635,43 @@ Hola, podéis entregarlo hasta el viernes a las 23:59...</div>
             <p>La app registrará el estado actual de tus asignaturas sin inundarte con avisos antiguos y empezará a notificarte todo lo nuevo cada ~5 minutos.</p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- CÓMO INSTALAR EN IPHONE (iOS) -->
+    <section id="ios" class="container">
+      <div class="section-title">
+        <h2>🍎 Cómo usar NotifAula en iPhone (iOS)</h2>
+        <p>En iOS tienes dos opciones gratuitas y sin servidores intermedios: el motor en segundo plano con <strong>Scriptable + Atajos</strong> o la <strong>Web App instalable (PWA)</strong> para la pantalla de inicio.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="step-number">1</div>
+          <h3>Motor en 2º plano (Scriptable)</h3>
+          <p>Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> en la App Store, importa <a href="./NotifAula.js" download="NotifAula.js" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">NotifAula.js</a> e inicia sesión en <code>aulavirtual.ual.es</code>.</p>
+        </div>
+
+        <div class="card">
+          <div class="step-number">2</div>
+          <h3>Automatízalo con Atajos de iOS</h3>
+          <p>En <strong>Atajos → Automatización</strong>, añade la acción <em>Scriptable → Run Script (NotifAula)</em> sin mostrar al ejecutar para recibir notificaciones nativas que abren <strong>Safari</strong>.</p>
+        </div>
+
+        <div class="card">
+          <div class="step-number">3</div>
+          <h3>Alternativa: Web App (PWA)</h3>
+          <p>Abre la <a href="./pwa.html" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Web App (PWA)</a> en Safari y pulsa <strong>Compartir → Añadir a pantalla de inicio</strong> para tener la misma interfaz de NotifAula en tu iPhone.</p>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 24px;">
+        <a href="./NotifAula.js" download="NotifAula.js" class="btn btn-primary">
+          📥 Descargar NotifAula.js (Scriptable)
+        </a>
+        <a href="./pwa.html" class="btn btn-secondary">
+          📲 Abrir Web App instalable (PWA)
+        </a>
       </div>
     </section>
 

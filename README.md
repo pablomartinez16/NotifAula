@@ -3,7 +3,7 @@
 ### **¿Estás harto de que la app oficial no funcione como debería?**
 **Simplemente recibe una notificación y entra a través de la web. Más sencillo, sin rodeos ni fallos.**
 
-> **📥 [Descargar última versión (`NotifAula.apk`) en GitHub Releases](../../releases/latest)** · **🌐 [Ver página web](https://pablomartinez16.github.io/NotifAula/)**
+> **🤖 [Descargar APK (Android)](../../releases/latest)** · **🍎 [Script iOS (`NotifAula.js`)](ios/NotifAula.js)** · **📲 [Web App PWA (iOS)](https://pablomartinez16.github.io/NotifAula/pwa.html)** · **🌐 [Página web](https://pablomartinez16.github.io/NotifAula/)**
 >
 > **Aviso legal:** Aplicación independiente y de código abierto **no oficial**. No está afiliada, respaldada ni patrocinada por la Universidad de Almería (UAL) ni por Anthology / Blackboard. Consulta la [Política de Privacidad](PRIVACY.md) y la [Licencia MIT](LICENSE).
 
@@ -25,7 +25,25 @@ Aplicación Android ligera (Kotlin + Jetpack Compose) que comprueba periódicame
 - **Apertura directa en el navegador del sistema**: al tocar una notificación (o una tarjeta del historial), se marca como leída y se abre la URL directa en tu navegador predeterminado (`Intent.ACTION_VIEW`), nunca en un navegador embebido.
 - **Segundo plano sin notificación persistente**: usa `WorkManager` cada ~15 minutos con reprogramación automática al reiniciar el teléfono (`BootReceiver`).
 
-## 🛠️ Cómo compilar e instalar
+## 🍎 Cómo usarla en iPhone (iOS)
+
+En iOS dispones de dos opciones **100 % gratuitas, sin cuenta de desarrollador de pago y sin servidores intermedios** que puedes usar juntas o por separado:
+
+### Opción A: Motor en segundo plano con Scriptable + Atajos de iOS (Recomendada)
+1. Instala gratis [**Scriptable**](https://apps.apple.com/es/app/scriptable/id1405459188) desde la App Store.
+2. Descarga [`ios/NotifAula.js`](ios/NotifAula.js) y ábrelo en Scriptable.
+3. Ejecuta **NotifAula** y pulsa **«Iniciar sesión en aulavirtual.ual.es»** para autenticarte en la web oficial de la UAL y realizar la primera sincronización silenciosa.
+4. En la app **Atajos** (*Shortcuts*) de tu iPhone → **Automatización**, crea una automatización (por hora del día o al abrir/cerrar apps) con la acción **Scriptable → Run Script (`NotifAula`)** desmarcando *«Mostrar al ejecutar»*. Al tocar cualquier notificación se abrirá directamente en **Safari**.
+
+### Opción B (Alternativa): Web App instalable (PWA) para iOS
+1. Abre [**`https://pablomartinez16.github.io/NotifAula/pwa.html`**](https://pablomartinez16.github.io/NotifAula/pwa.html) desde **Safari** en tu iPhone.
+2. Pulsa el botón **Compartir (⬆️)** → **«Añadir a pantalla de inicio»** para instalar **NotifAula** como una Web App (PWA) a pantalla completa con la misma interfaz que en Android.
+3. Desde la PWA puedes:
+   - Activar las **notificaciones nativas de la PWA** en iOS 16.4+ (`ServiceWorker`).
+   - Sincronizar en 1 toque con **Scriptable** (`scriptable:///run/NotifAula`) y ver todo el historial de avisos por asignatura.
+   - O usar el **Marcador Inteligente de Safari** incluido (sin instalar ninguna app extra) para escanear tus asignaturas cuando entres a `aulavirtual.ual.es`.
+
+## 🛠️ Cómo compilar e instalar en Android
 
 1. Clona o abre la carpeta del proyecto (`NotifAula`) en **Android Studio** (Ladybug / Meerkat o superior).
 2. Android Studio descargará automáticamente el Gradle Wrapper y el Android SDK (API 35).

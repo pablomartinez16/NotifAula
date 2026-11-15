@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>NotifAula — Web App (PWA)</title>
+  <meta name="description" content="Panel Web App instalable (PWA) de NotifAula para iOS y navegadores." />
+  <meta name="theme-color" content="#0055A5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="NotifAula" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Catamaran:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ual-blue: #0055A5;
+      --ual-blue-dark: #003B75;
+      --ual-blue-light: #E8F1FF;
+      --bg: #F8FAFF;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --muted: #475569;
+      --border: #E2E8F0;
+      --danger: #DC2626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      font-family: 'Catamaran', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* TOP BAR (matches Android HomeScreen) */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    .topbar-inner {
+      max-width: 680px;
+      margin: 0 auto;
+      height: 60px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.3rem;
+      color: var(--ual-blue);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 1.15rem;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .icon-btn:hover, .icon-btn:active {
+      background: var(--ual-blue-light);
+      color: var(--ual-blue);
+    }
+
+    /* CONTAINER */
+    .app-container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* STATUS CARD (matches Android StatusCard) */
+    .status-card {
+      background: linear-gradient(145deg, var(--ual-blue), var(--ual-blue-dark));
+      color: #fff;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 26px rgba(0, 85, 165, 0.24);
+    }
+
+    .status-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4ADE80;
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.28);
+    }
+
+    .status-user {
+      font-size: 0.92rem;
+      opacity: 0.92;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .status-time {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      margin-bottom: 14px;
+    }
+
+    .status-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 15px;
+      border-radius: 11px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.92rem;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-white {
+      background: #fff;
+      color: var(--ual-blue);
+    }
+
+    .btn-glass {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+    }
+
+    .btn-primary {
+      background: var(--ual-blue);
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: var(--surface);
+      color: var(--ual-blue);
+      border: 1.5px solid var(--border);
+    }
+
+    /* INSTALL PWA BANNER */
+    .banner-card {
+      background: var(--surface);
+      border: 1.5px solid #BFDBFE;
+      border-radius: 16px;
+      padding: 15px;
+    }
+
+    .banner-card h3 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--ual-blue);
+      margin-bottom: 4px;
+    }
+
+    .banner-card p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* TABS FOR iOS OPTIONS */
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #E2E8F0;
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+    }
+
+    .mode-tab {
+      border: none;
+      background: transparent;
+      padding: 8px 10px;
+      border-radius: 9px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.86rem;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .mode-tab.active {
+      background: var(--surface);
+      color: var(--ual-blue);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+    }
+
+    .mode-panel {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .mode-panel.active {
+      display: block;
+    }
+
+    .mode-panel h3 {
+      font-size: 1.02rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .mode-panel p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .step-list {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      font-size: 0.88rem;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    .step-list li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .step-pill {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--ual-blue-light);
+      color: var(--ual-blue);
+      font-weight: 800;
+      font-size: 0.78rem;
+      display: grid;
+      place-items: center;
+      margin-top: 1px;
+    }
+
+    /* SECTION HEADER */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 2px 0;
+    }
+
+    .section-header h2 {
+      font-size: 1.08rem;
+      font-weight: 800;
+    }
+
+    .text-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .text-btn:hover {
+      color: var(--danger);
+    }
+
+    /* NOTIFICATION LIST (matches Android NotificationCard) */
+    .notif-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .notif-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+      cursor: pointer;
+    }
+
+    .notif-card.unread {
+      background: #F0F6FF;
+      border-color: #BFDBFE;
+    }
+
+    .notif-card:active {
+      transform: scale(0.99);
+    }
+
+    .notif-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--ual-blue-light);
+      color: var(--ual-blue);
+      display: grid;
+      place-items: center;
+      font-size: 1.15rem;
+      flex-shrink: 0;
+    }
+
+    .notif-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .notif-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .notif-course {
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: var(--ual-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .notif-time {
+      font-size: 0.76rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .notif-title {
+      font-size: 0.96rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 3px;
+      overflow-wrap: break-word;
+    }
+
+    .notif-body {
+      font-size: 0.86rem;
+      color: var(--muted);
+      white-space: pre-line;
+      overflow-wrap: break-word;
+    }
+
+    .empty-state {
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    /* MODAL (matches Android PrivacyDialog) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 50;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 20px;
+      max-width: 480px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 22px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal h3 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: var(--ual-blue);
+    }
+
+    .modal h4 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin: 12px 0 4px;
+    }
+
+    .modal p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-title">
+        <span>🔔</span>
+        <span>NotifAula</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="btn-sync-top" class="icon-btn" title="Comprobar ahora" aria-label="Comprobar ahora">🔄</button>
+        <button id="btn-info" class="icon-btn" title="Privacidad y aviso legal" aria-label="Información y privacidad">ⓘ</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-container">
+    <!-- STATUS CARD -->
+    <section class="status-card">
+      <div class="status-top">
+        <div class="status-badge">
+          <span class="status-dot"></span>
+          <span id="status-title">NotifAula Web App (iOS / PWA)</span>
+        </div>
+      </div>
+      <div id="status-user" class="status-user">Conecta Scriptable o usa el escáner rápido en Safari</div>
+      <div id="status-time" class="status-time">Última comprobación: nunca</div>
+
+      <div class="status-actions">
+        <button id="btn-run-scriptable" class="btn btn-white">
+          🔄 Comprobar ahora
+        </button>
+        <a href="https://aulavirtual.ual.es/ultra/stream" target="_blank" rel="noopener" class="btn btn-glass">
+          🌐 Abrir Aula Virtual
+        </a>
+      </div>
+    </section>
+
+    <!-- INSTALL AS iOS HOME SCREEN PWA BANNER -->
+    <section id="install-banner" class="banner-card">
+      <h3>📲 Instálala en la pantalla de inicio de tu iPhone</h3>
+      <p>
+        En Safari, pulsa el botón <strong>Compartir (⬆️)</strong> en la barra inferior y selecciona <strong>«Añadir a pantalla de inicio»</strong>. Así tendrás <strong>NotifAula</strong> como una app nativa a pantalla completa y podrás activar los avisos Web Push de iOS.
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-enable-webpush" class="btn btn-primary">
+          🔔 Activar notificaciones de la PWA
+        </button>
+        <button id="btn-test-notif" class="btn btn-outline">
+          ✨ Probar aviso en iPhone
+        </button>
+      </div>
+    </section>
+
+    <!-- iOS SETUP MODES -->
+    <div class="mode-tabs" role="tablist">
+      <button class="mode-tab active" data-tab="panel-scriptable">⚡ Modo Automático (Scriptable)</button>
+      <button class="mode-tab" data-tab="panel-bookmarklet">🧭 Alternativa sin apps (Safari)</button>
+    </div>
+
+    <!-- MODE 1: SCRIPTABLE + SHORTCUTS -->
+    <section id="panel-scriptable" class="mode-panel active">
+      <h3>Sincronización en segundo plano con Scriptable</h3>
+      <p>
+        Para que tu iPhone compruebe el Aula Virtual automáticamente en segundo plano sin abrir nada, combina esta PWA con el motor local de <strong>Scriptable</strong>:
+      </p>
+      <ul class="step-list">
+        <li>
+          <span class="step-pill">1</span>
+          <span>Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> en la App Store y descarga el script <code>NotifAula.js</code>.</span>
+        </li>
+        <li>
+          <span class="step-pill">2</span>
+          <span>Ábrelo en Scriptable, inicia sesión en <code>aulavirtual.ual.es</code> y pulsa <strong>«Comprobar ahora»</strong> arriba para sincronizar tus avisos con esta PWA.</span>
+        </li>
+        <li>
+          <span class="step-pill">3</span>
+          <span>En la app <strong>Atajos → Automatización</strong>, añade <em>Scriptable → Run Script (NotifAula)</em> para que corra solo en segundo plano.</span>
+        </li>
+      </ul>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <a href="./NotifAula.js" download="NotifAula.js" class="btn btn-primary">
+          📥 Descargar NotifAula.js
+        </a>
+        <a href="./index.html" class="btn btn-outline">
+          📖 Ver guía completa
+        </a>
+      </div>
+    </section>
+
+    <!-- MODE 2: PURE SAFARI / PWA BOOKMARKLET -->
+    <section id="panel-bookmarklet" class="mode-panel">
+      <h3>Alternativa 100 % Web desde Safari (sin instalar apps)</h3>
+      <p>
+        Si prefieres no instalar Scriptable, puedes copiar este <strong>Marcador Inteligente</strong> en Safari. Cuando estés dentro de <code>aulavirtual.ual.es</code>, tócalo y escaneará al instante tus notas, anuncios, materiales y mensajes enviándolos a esta PWA:
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-copy-bookmarklet" class="btn btn-primary">
+          📋 Copiar Marcador Escáner para Safari
+        </button>
+      </div>
+      <p id="copy-status" style="margin-top: 8px; margin-bottom: 0; font-weight: 700; color: var(--ual-blue); display: none;">
+        ✔ ¡Copiado! Añade cualquier página a Marcadores en Safari, edítala y pega este código como dirección URL.
+      </p>
+    </section>
+
+    <!-- NOTIFICATION HISTORY -->
+    <div class="section-header">
+      <h2>Últimas notificaciones</h2>
+      <button id="btn-clear-history" class="text-btn">Borrar historial</button>
+    </div>
+
+    <div id="notif-list" class="notif-list"></div>
+  </main>
+
+  <!-- PRIVACY & INFO DIALOG -->
+  <div id="privacy-modal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>🔒 Privacidad y aviso legal</h3>
+      <p>
+        <strong>NotifAula</strong> es una herramienta abierta creada por y para estudiantes de la Universidad de Almería.
+      </p>
+      <h4>1. Aviso de no oficialidad</h4>
+      <p>
+        Proyecto independiente <strong>no oficial</strong>. No está afiliado, respaldado ni patrocinado por la Universidad de Almería (UAL) ni por Anthology Inc. (Blackboard).
+      </p>
+      <h4>2. Privacidad 100 % en tu dispositivo</h4>
+      <p>
+        Tus credenciales y tus notificaciones nunca pasan por ningún servidor intermedio. Tanto la app de Android como el script de iOS y esta PWA guardan el historial exclusivamente en la memoria local de tu teléfono.
+      </p>
+      <h4>3. Enlaces directos a tu navegador</h4>
+      <p>
+        Al pulsar sobre cualquier aviso se abre directamente la página correspondiente de <code>https://aulavirtual.ual.es</code> en el navegador de tu móvil (Safari / Chrome).
+      </p>
+      <div style="margin-top: 16px; text-align: right;">
+        <button id="btn-close-modal" class="btn btn-primary">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "notifaula_pwa_state_v1";
+
+    function loadPwaState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { user: null, lastPoll: 0, history: [] };
+        return JSON.parse(raw);
+      } catch (e) {
+        return { user: null, lastPoll: 0, history: [] };
+      }
+    }
+
+    function savePwaState(state) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function timeAgo(ts) {
+      if (!ts) return "nunca";
+      const diff = Math.max(0, Date.now() - ts);
+      const mins = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+      if (diff < 60000) return "ahora mismo";
+      if (mins < 60) return "hace " + mins + " min";
+      if (hours < 24) return "hace " + hours + " h";
+      if (days === 1) return "hace 1 día";
+      return "hace " + days + " días";
+    }
+
+    function iconForType(type) {
+      switch (type) {
+        case "GRADE": return "🎓";
+        case "CONTENT": return "📄";
+        case "TASK": return "📅";
+        case "MESSAGE": return "✉️";
+        default: return "📢";
+      }
+    }
+
+    function render() {
+      const state = loadPwaState();
+      const userEl = document.getElementById("status-user");
+      const timeEl = document.getElementById("status-time");
+      const listEl = document.getElementById("notif-list");
+
+      userEl.textContent = state.user
+        ? "Sesión activa: " + state.user
+        : "Conecta Scriptable o usa el escáner rápido en Safari";
+      timeEl.textContent = "Última comprobación: " + timeAgo(state.lastPoll);
+
+      const items = state.history || [];
+      if (!items.length) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🔔</div>
+            <strong>Todavía no hay notificaciones</strong>
+            <p style="margin-top: 4px; font-size: 0.88rem;">
+              Cuando haya nuevas notas, anuncios, materiales o mensajes en tus asignaturas aparecerán aquí y podrás abrirlos directamente en Safari.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = "";
+      items.forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "notif-card" + (item.isRead ? "" : " unread");
+        card.innerHTML = `
+          <div class="notif-icon">${iconForType(item.type)}</div>
+          <div class="notif-content">
+            <div class="notif-meta">
+              <span class="notif-course">${escapeHtml(item.courseName || "Aula Virtual UAL")}</span>
+              <span class="notif-time">${timeAgo(item.timestamp)}</span>
+            </div>
+            <div class="notif-title">${escapeHtml(item.title || "")}</div>
+            <div class="notif-body">${escapeHtml(item.body || "")}</div>
+          </div>
+        `;
+        card.addEventListener("click", () => {
+          item.isRead = true;
+          savePwaState(state);
+          render();
+          window.open(item.url || "https://aulavirtual.ual.es/ultra/stream", "_blank", "noopener");
+        });
+        listEl.appendChild(card);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function triggerScriptableSync() {
+      window.location.href = "scriptable:///run/NotifAula";
+    }
+
+    document.getElementById("btn-run-scriptable").addEventListener("click", triggerScriptableSync);
+    document.getElementById("btn-sync-top").addEventListener("click", triggerScriptableSync);
+
+    document.getElementById("btn-clear-history").addEventListener("click", () => {
+      const state = loadPwaState();
+      state.history = [];
+      savePwaState(state);
+      render();
+    });
+
+    // Modal
+    const modal = document.getElementById("privacy-modal");
+    document.getElementById("btn-info").addEventListener("click", () => modal.classList.add("open"));
+    document.getElementById("btn-close-modal").addEventListener("click", () => modal.classList.remove("open"));
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.classList.remove("open");
+    });
+
+    // Mode tabs
+    document.querySelectorAll(".mode-tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".mode-tab").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".mode-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    // Service Worker & Web Notifications (iOS 16.4+ standalone PWA)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    }
+
+    document.getElementById("btn-enable-webpush").addEventListener("click", async () => {
+      if (!("Notification" in window)) {
+        alert("Para activar las notificaciones nativas en iPhone (iOS 16.4+), primero pulsa Compartir (⬆️) en Safari y selecciona 'Añadir a pantalla de inicio', y luego abre NotifAula desde tu pantalla de inicio.");
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm === "granted") {
+        alert("✅ ¡Notificaciones nativas activadas en esta Web App!");
+      } else {
+        alert("Permiso no concedido. Asegúrate de haber añadido la app a la pantalla de inicio.");
+      }
+    });
+
+    document.getElementById("btn-test-notif").addEventListener("click", async () => {
+      const sample = {
+        id: "demo:" + Date.now(),
+        type: "GRADE",
+        courseName: "Ingeniería del Software",
+        title: "🎓 Nueva nota: Práctica 2",
+        body: "📊 Nota: 9,5 / 10 — Toca para abrir en Safari",
+        url: "https://aulavirtual.ual.es/ultra/stream",
+        timestamp: Date.now(),
+        isRead: false
+      };
+      const state = loadPwaState();
+      state.lastPoll = Date.now();
+      state.history = [sample, ...(state.history || [])];
+      savePwaState(state);
+      render();
+
+      if ("Notification" in window && Notification.permission === "granted" && "serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(sample.title, {
+          body: "[" + sample.courseName + "] " + sample.body,
+          icon: "./icon.svg",
+          data: { url: sample.url }
+        });
+      }
+    });
+
+    // Safari Bookmarklet generator (runs 100% inside aulavirtual.ual.es without sending data outside)
+    const bookmarkletCode = `javascript:(async()=>{if(location.hostname!=='aulavirtual.ual.es'){alert('Abre primero aulavirtual.ual.es en Safari y vuelve a pulsar este marcador.');location.href='https://aulavirtual.ual.es/ultra/stream';return;}const h={'Accept':'application/json'};const m=document.cookie.match(/xsrf:([0-9a-fA-F-]{16,64})/);if(m)h['X-Blackboard-XSRF']=m[1];const g=async(u)=>(await fetch(u,{credentials:'include',headers:h})).json();const me=await g('/learn/api/v1/users/me');const mem=await g('/learn/api/v1/users/'+me.id+'/memberships?expand=course.effectiveAvailability&limit=200');const items=[];for(const x of (mem.results||[])){const c=x.course;if(!c||c.isClosed)continue;const cid=c.id;const cname=(c.displayName||c.name||cid).split(' - ').slice(-1)[0];const ann=await g('/learn/api/v1/courses/'+cid+'/announcements?limit=3');for(const a of (ann.results||[])){items.push('📢 ['+cname+'] '+(a.title||'Anuncio'));}}alert('🔔 NotifAula — Últimos avisos:\\n\\n'+(items.slice(0,12).join('\\n')||'Sin anuncios recientes'));})();`;
+
+    document.getElementById("btn-copy-bookmarklet").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(bookmarkletCode);
+        document.getElementById("copy-status").style.display = "block";
+      } catch (e) {
+        prompt("Copia este código para tu marcador de Safari:", bookmarkletCode);
+      }
+    });
+
+    // Initialize and keep relative timestamps fresh
+    render();
+    setInterval(render, 15000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) render();
+    });
+  </script>
+</body>
+</html>
