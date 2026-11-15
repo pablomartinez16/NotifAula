@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
@@ -76,13 +77,30 @@ fun LoginScreen(sessionExpired: Boolean, onLoggedIn: () -> Unit) {
 
 @Composable
 private fun WelcomeLoginScreen(sessionExpired: Boolean, onStartLogin: () -> Unit) {
+    var showPrivacy by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp)
+            .padding(24.dp)
     ) {
+        IconButton(
+            onClick = { showPrivacy = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp)
+        ) {
+            Icon(
+                Icons.Filled.Info,
+                contentDescription = "Información y Política de Privacidad",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
         Column(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
@@ -135,6 +153,10 @@ private fun WelcomeLoginScreen(sessionExpired: Boolean, onStartLogin: () -> Unit
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 8.dp)
         )
+    }
+
+    if (showPrivacy) {
+        PrivacyInfoDialog(onDismiss = { showPrivacy = false })
     }
 }
 

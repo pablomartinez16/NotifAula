@@ -131,6 +131,7 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
     val batteryOptimized = remember(tick) { isBatteryOptimized(context) }
 
     var confirmLogout by remember { mutableStateOf(false) }
+    var showPrivacy by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -161,6 +162,9 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
                         IconButton(onClick = { scope.launch { repo.clearNotificationsHistory() } }) {
                             Icon(Icons.Filled.Delete, "Limpiar historial")
                         }
+                    }
+                    IconButton(onClick = { showPrivacy = true }) {
+                        Icon(Icons.Filled.Info, "Información y Política de Privacidad")
                     }
                     IconButton(onClick = { confirmLogout = true }) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, "Cerrar sesión")
@@ -231,6 +235,10 @@ fun HomeScreen(onLoggedOut: () -> Unit) {
             },
             dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Cancelar") } }
         )
+    }
+
+    if (showPrivacy) {
+        PrivacyInfoDialog(onDismiss = { showPrivacy = false })
     }
 }
 
