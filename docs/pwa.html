@@ -546,22 +546,26 @@
 
     <!-- MODE 1: SCRIPTABLE + SHORTCUTS -->
     <section id="panel-scriptable" class="mode-panel active">
-      <h3>Sincronización en segundo plano con Scriptable</h3>
+      <h3>Comprobación automática cada ~5 min con Scriptable</h3>
       <p>
-        Para que tu iPhone compruebe el Aula Virtual automáticamente en segundo plano sin abrir nada, combina esta PWA con el motor local de <strong>Scriptable</strong>:
+        Como iOS restringe los procesos permanentes en segundo plano, <strong>NotifAula.js</strong> incluye un <strong>Widget nativo con refresco de 5 min</strong> y un <strong>temporizador interno de 5 min</strong> para Atajos de iOS:
       </p>
       <ul class="step-list">
         <li>
           <span class="step-pill">1</span>
-          <span>Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> en la App Store y descarga el script <code>NotifAula.js</code>.</span>
+          <span>Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> en la App Store, descarga <code>NotifAula.js</code> abajo e impórtalo en Scriptable.</span>
         </li>
         <li>
           <span class="step-pill">2</span>
-          <span>Ábrelo en Scriptable, inicia sesión en <code>aulavirtual.ual.es</code> y pulsa <strong>«Comprobar ahora»</strong> arriba para sincronizar tus avisos con esta PWA.</span>
+          <span>Ejecuta <strong>NotifAula</strong> dentro de Scriptable, pulsa <em>«🔑 Iniciar sesión en aulavirtual.ual.es»</em> y cierra el navegador integrado cuando carguen tus cursos.</span>
         </li>
         <li>
           <span class="step-pill">3</span>
-          <span>En la app <strong>Atajos → Automatización</strong>, añade <em>Scriptable → Run Script (NotifAula)</em> para que corra solo en segundo plano.</span>
+          <span><strong>Widget automático (5 min):</strong> Añade un widget de <strong>Scriptable</strong> a tu pantalla de inicio, edítalo y selecciona el script <strong>NotifAula</strong>.</span>
+        </li>
+        <li>
+          <span class="step-pill">4</span>
+          <span><strong>Atajo en segundo plano (cada 5 min):</strong> En <strong>Atajos → Automatización → <code>+</code> → App</strong>, elige tus 3-4 apps más usadas (WhatsApp, Safari, Instagram), marca <em>«Al cerrarse»</em> + <em>«Ejecutar inmediatamente»</em> y añade <strong>Scriptable → Run Script (NotifAula)</strong> desmarcando <em>«Mostrar al ejecutar»</em>. El script solo comprobará si han pasado ≥ 5 minutos desde la última vez.</span>
         </li>
       </ul>
       <div style="display: flex; flex-wrap: wrap; gap: 8px;">

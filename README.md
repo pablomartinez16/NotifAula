@@ -29,11 +29,13 @@ Aplicación Android ligera (Kotlin + Jetpack Compose) que comprueba periódicame
 
 En iOS dispones de dos opciones **100 % gratuitas, sin cuenta de desarrollador de pago y sin servidores intermedios** que puedes usar juntas o por separado:
 
-### Opción A: Motor en segundo plano con Scriptable + Atajos de iOS (Recomendada)
+### Opción A: Motor en segundo plano con Scriptable + Widget / Atajos cada ~5 min (Recomendada)
 1. Instala gratis [**Scriptable**](https://apps.apple.com/es/app/scriptable/id1405459188) desde la App Store.
-2. Descarga [`ios/NotifAula.js`](ios/NotifAula.js) y ábrelo en Scriptable.
-3. Ejecuta **NotifAula** y pulsa **«Iniciar sesión en aulavirtual.ual.es»** para autenticarte en la web oficial de la UAL y realizar la primera sincronización silenciosa.
-4. En la app **Atajos** (*Shortcuts*) de tu iPhone → **Automatización**, crea una automatización (por hora del día o al abrir/cerrar apps) con la acción **Scriptable → Run Script (`NotifAula`)** desmarcando *«Mostrar al ejecutar»*. Al tocar cualquier notificación se abrirá directamente en **Safari**.
+2. Descarga [`ios/NotifAula.js`](ios/NotifAula.js) (o desde la [web de NotifAula](https://pablomartinez16.github.io/NotifAula/#ios)) e impórtalo en Scriptable.
+3. Ejecuta **NotifAula** dentro de Scriptable y pulsa **«🔑 Iniciar sesión en aulavirtual.ual.es»** para autenticarte en la web oficial de la UAL y realizar la primera sincronización silenciosa.
+4. Para que compruebe automáticamente cada **~5 minutos** en segundo plano:
+   - **Widget automático en pantalla de inicio**: Añade un widget de **Scriptable** a tu pantalla de inicio → *Editar widget* → selecciona el script `NotifAula`. El widget solicita a iOS actualizarse cada 5 minutos (`refreshAfterDate`) y muestra el último aviso.
+   - **Automatización en Atajos (*Shortcuts*)**: En la app **Atajos → Automatización → `+` → App**, selecciona tus 3-4 apps habituales (WhatsApp, Safari, Instagram...), marca **«Al cerrarse»** + **«Ejecutar inmediatamente»** y añade la acción **Scriptable → Run Script (`NotifAula`)** desmarcando *«Mostrar al ejecutar»*. Como `NotifAula.js` incluye un control interno de 5 minutos (`MIN_AUTO_INTERVAL_MS`), solo comprobará el Aula Virtual cuando hayan transcurrido al menos 5 minutos desde la última comprobación. Al tocar cualquier notificación se abrirá directamente en **Safari**.
 
 ### Opción B (Alternativa): Web App instalable (PWA) para iOS
 1. Abre [**`https://pablomartinez16.github.io/NotifAula/pwa.html`**](https://pablomartinez16.github.io/NotifAula/pwa.html) desde **Safari** en tu iPhone.

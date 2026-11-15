@@ -653,36 +653,55 @@ Hola, podéis entregarlo hasta el viernes a las 23:59...</div>
     <section id="ios" class="container">
       <div class="section-title">
         <h2>🍎 Cómo usar NotifAula en iPhone (iOS)</h2>
-        <p>En iOS tienes dos opciones gratuitas y sin servidores intermedios: el motor en segundo plano con <strong>Scriptable + Atajos</strong> o la <strong>Web App instalable (PWA)</strong> para la pantalla de inicio.</p>
+        <p>En iOS no es posible dejar alarmas en segundo plano como en Android salvo que el propio sistema las dispare. Por eso <strong>NotifAula.js</strong> incorpora un <strong>Widget nativo con refresco cada 5 min</strong> y un <strong>filtro inteligente de 5 min para Atajos</strong>, además de una <strong>Web App instalable (PWA)</strong> como alternativa.</p>
       </div>
 
       <div class="grid-3">
         <div class="card">
           <div class="step-number">1</div>
-          <h3>Motor en 2º plano (Scriptable)</h3>
-          <p>Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> en la App Store, importa <a href="./NotifAula.js" download="NotifAula.js" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">NotifAula.js</a> e inicia sesión en <code>aulavirtual.ual.es</code>.</p>
+          <h3>Descarga Scriptable e importa NotifAula.js</h3>
+          <p>
+            1. Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> desde la App Store.<br />
+            2. Pulsa abajo en <strong>«Descargar NotifAula.js»</strong>.<br />
+            3. En las descargas de Safari (⬇️), toca <code>NotifAula.js</code> → botón <strong>Compartir (⬆️)</strong> → <strong>Scriptable</strong> → <em>Add to My Scripts</em>.
+          </p>
         </div>
 
         <div class="card">
           <div class="step-number">2</div>
-          <h3>Automatízalo con Atajos de iOS</h3>
-          <p>En <strong>Atajos → Automatización</strong>, añade la acción <em>Scriptable → Run Script (NotifAula)</em> sin mostrar al ejecutar para recibir notificaciones nativas que abren <strong>Safari</strong>.</p>
+          <h3>Inicia sesión en aulavirtual.ual.es</h3>
+          <p>
+            1. Abre la app <strong>Scriptable</strong> y toca <strong>NotifAula</strong>.<br />
+            2. Pulsa <em>«🔑 Iniciar sesión en aulavirtual.ual.es»</em> e identifícate en la web oficial de la UAL.<br />
+            3. Cuando carguen tus cursos, pulsa <strong>Cerrar</strong> arriba a la izquierda. El script guardará la línea base silenciosa y mostrará <code>✅ ¡Listo!</code>.
+          </p>
         </div>
 
         <div class="card">
           <div class="step-number">3</div>
-          <h3>Alternativa: Web App (PWA)</h3>
-          <p>Abre la <a href="./pwa.html" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Web App (PWA)</a> en Safari y pulsa <strong>Compartir → Añadir a pantalla de inicio</strong> para tener la misma interfaz de NotifAula en tu iPhone.</p>
+          <h3>Activa la comprobación cada ~5 min</h3>
+          <p>
+            <strong>Opción A (Widget automático):</strong> Mantén pulsada tu pantalla de inicio → <strong><code>+</code></strong> → busca <strong>Scriptable</strong> → añade un widget → mantén pulsado el widget → <em>Editar widget</em> → en <em>Script</em> elige <strong>NotifAula</strong>.<br />
+            <strong>Opción B (Atajos cada 5 min):</strong> En la app <strong>Atajos → Automatización → <code>+</code> → App</strong>, elige tus 3-4 apps habituales (WhatsApp, Safari, Instagram), marca <em>«Al cerrarse»</em> + <em>«Ejecutar inmediatamente»</em> y añade la acción <strong>Scriptable → Run Script (NotifAula)</strong> desmarcando <em>«Mostrar al ejecutar»</em>. El script lleva un temporizador interno para comprobar como máximo una vez cada <strong>5 minutos</strong>.
+          </p>
         </div>
       </div>
 
-      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 24px;">
-        <a href="./NotifAula.js" download="NotifAula.js" class="btn btn-primary">
-          📥 Descargar NotifAula.js (Scriptable)
-        </a>
-        <a href="./pwa.html" class="btn btn-secondary">
-          📲 Abrir Web App instalable (PWA)
-        </a>
+      <div class="card" style="margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+        <div style="flex: 1; min-width: 260px;">
+          <h3 style="margin-bottom: 4px;">📲 Alternativa en iOS: Web App instalable (PWA)</h3>
+          <p style="margin: 0;">
+            Si prefieres tener un icono con la interfaz completa de <strong>NotifAula</strong> en tu iPhone, abre la <a href="./pwa.html" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Web App (PWA)</a> en Safari y pulsa <strong>Compartir (⬆️) → «Añadir a pantalla de inicio»</strong>. Incluye activación de notificaciones Web Push (iOS 16.4+), lanzador en 1 toque para Scriptable y marcador escáner para Safari sin instalar apps.
+          </p>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+          <a href="./NotifAula.js" download="NotifAula.js" class="btn btn-primary">
+            📥 Descargar NotifAula.js (Scriptable)
+          </a>
+          <a href="./pwa.html" class="btn btn-secondary">
+            📲 Abrir Web App (PWA)
+          </a>
+        </div>
       </div>
     </section>
 

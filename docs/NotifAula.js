@@ -21,6 +21,7 @@ const BASE_URL = `https://${HOST}`;
 const ULTRA_URL = `${BASE_URL}/ultra/`;
 const STATE_FILE = "notifaula-state.json";
 const KEYCHAIN_USER_KEY = "notifaula_user_info";
+const MIN_AUTO_INTERVAL_MS = 5 * 60 * 1000; // Intervalo mínimo automático: 5 minutos
 
 const LOWERCASE_WORDS = new Set([
   "de", "del", "la", "las", "el", "los", "y", "e", "o", "u", "a", "en", "con", "por", "para", "al"
@@ -634,14 +635,72 @@ async function showHistoryMenu(history) {
   await table.present(false);
 }
 
-// ───────────────────────── Punto de entrada ─────────────────────────
+// ───────────────────────── Widget de iOS y Punto de entrada ─────────────────────────
+
+function buildWidget(state, user, sessionExpired) {
+  const w = new ListWidget();
+  w.backgroundColor = new Color("#0055A5");
+  w.setPadding(14, 16, 14, 16);
+  w.refreshAfterDate = new Date(Date.now() + MIN_AUTO_INTERVAL_MS);
+
+  const header = w.addText("🔔 NotifAula");
+  header.font = Font.boldSystemFont(14);
+  header.textColor = Color.white();
+  w.addSpacer(6);
+
+  if (sessionExpired || !user) {
+    const msg = w.addText("Toca para iniciar sesión en aulavirtual.ual.es");
+    msg.font = Font.systemFont(13);
+    msg.textColor = Color.white();
+    return w;
+  }
+
+  const latest = (state.history || [])[0];
+  if (latest) {
+    const courseTxt = w.addText(latest.courseName || "Aula Virtual");
+    courseTxt.font = Font.boldSystemFont(11);
+    courseTxt.textColor = new Color("#BFDBFE");
+    const titleTxt = w.addText(latest.title || "");
+    titleTxt.font = Font.boldSystemFont(13);
+    titleTxt.textColor = Color.white();
+    titleTxt.lineLimit = 2;
+    w.url = latest.url;
+  } else {
+    const okTxt = w.addText("Todo al día · Sin avisos nuevos");
+    okTxt.font = Font.systemFont(13);
+    okTxt.textColor = Color.white();
+  }
+
+  w.addSpacer();
+  const foot = w.addText(`Actualizado ${timeAgo(state.lastPoll)}`);
+  foot.font = Font.systemFont(10);
+  foot.textColor = new Color("#DBEAFE");
+  return w;
+}
 
 async function main() {
   if (config.runsInApp) {
     await showAppMenu();
+  } else if (config.runsInWidget) {
+    let expired = false;
+    try {
+      const state = loadState();
+      if (!state.lastPoll || Date.now() - state.lastPoll >= MIN_AUTO_INTERVAL_MS) {
+        await runSync();
+      }
+    } catch (e) {
+      if (String(e.message).includes("SESSION_EXPIRED")) {
+        expired = true;
+        await sendSessionExpiredNotification();
+      }
+    }
+    Script.setWidget(buildWidget(loadState(), getUserInfo(), expired));
   } else {
     try {
-      await runSync();
+      const state = loadState();
+      if (!state.lastPoll || Date.now() - state.lastPoll >= MIN_AUTO_INTERVAL_MS) {
+        await runSync();
+      }
     } catch (e) {
       if (String(e.message).includes("SESSION_EXPIRED")) {
         await sendSessionExpiredNotification();
