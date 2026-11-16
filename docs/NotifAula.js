@@ -22,7 +22,7 @@ const ULTRA_URL = `${BASE_URL}/ultra/`;
 const STATE_FILE = "notifaula-state.json";
 const KEYCHAIN_USER_KEY = "notifaula_user_info";
 const WIDGET_REFRESH_MS = 5 * 60 * 1000; // Refresco solicitado para el Widget: 5 min
-const SHORTCUT_DEBOUNCE_MS = 50 * 1000;  // Evita dobles ejecuciones accidentales (<50s), sin bloquear ciclos de 5 min
+const SHORTCUT_DEBOUNCE_MS = 4 * 60 * 1000; // Mínimo 4 min entre ejecuciones en segundo plano (~5 min reales sin saltar ciclos)
 
 const LOWERCASE_WORDS = new Set([
   "de", "del", "la", "las", "el", "los", "y", "e", "o", "u", "a", "en", "con", "por", "para", "al"

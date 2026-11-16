@@ -33,15 +33,9 @@ En iOS dispones de dos opciones **100 % gratuitas, sin cuenta de desarrollador d
 1. Instala gratis [**Scriptable**](https://apps.apple.com/es/app/scriptable/id1405459188) desde la App Store.
 2. Descarga [`ios/NotifAula.js`](ios/NotifAula.js) (o desde la [web de NotifAula](https://pablomartinez16.github.io/NotifAula/#ios)) e impórtalo en Scriptable.
 3. Ejecuta **NotifAula** dentro de Scriptable y pulsa **«🔑 Iniciar sesión en aulavirtual.ual.es»** para autenticarte en la web oficial de la UAL y realizar la primera sincronización silenciosa.
-4. Para que compruebe automáticamente cada **5 minutos** en segundo plano:
-   - **Bucle automático cada 5 min en Atajos (funciona incluso con la pantalla apagada)**:
-     1. En *Ajustes → Concentración*, crea un modo de concentración llamado **NotifAula** (permitiendo todas las notificaciones).
-     2. En **Atajos → Automatización → `+` → Concentración (`NotifAula`)**, selecciona **«Al desactivarse»** + **«Ejecutar inmediatamente»** y añade estas 3 acciones:
-        - **Scriptable → Run Script (`NotifAula`)** (desmarcando *«Mostrar al ejecutar»*).
-        - **Fecha → Ajustar fecha**: *Sumar `5` minutos* a *Fecha actual*.
-        - **Ajustar concentración**: *Activar `NotifAula` hasta Hora `[Fecha ajustada]`*.
-     3. Activa una vez el modo de concentración `NotifAula` durante 5 minutos y a partir de ese momento se re-programará solo cada 5 minutos.
-   - **Alternativa rápida (Widget + Al cerrar apps)**: Añade un widget de **Scriptable** (`NotifAula`) en la pantalla de inicio y/o una automatización en **Atajos → App → Al cerrarse** con tus apps habituales. Al tocar cualquier notificación se abrirá directamente en **Safari**.
+4. Elige una de estas dos opciones **100 % locales** para que compruebe en segundo plano (sin ensuciar tu pantalla de inicio):
+   - **Opción 1 (Sin tocar Atajos · Widget oculto en la «Vista Hoy»)**: Desliza a la izquierda del todo en tu iPhone hasta la pantalla lateral (*Vista Hoy*) → mantén pulsado → **`+`** → añade un widget de **Scriptable** → *Editar widget* → selecciona `NotifAula`. Tu pantalla de inicio queda limpia y iOS lo actualiza solo.
+   - **Opción 2 (Sin widgets · 1 acción en Atajos)**: Abre **Atajos → Automatización → `+` → App**, selecciona tus 3-4 apps diarias (*WhatsApp, Instagram, Safari...*), marca **«Al cerrarse»** + **«Ejecutar inmediatamente»** y pulsa *Siguiente*. Toca **«Nueva automatización en blanco»**, busca **Scriptable → Run Script** (aparece por defecto al tener instalada la app), elige `NotifAula` y en el desplegable `>` desmarca *«Mostrar al ejecutar»*. Al tocar cualquier notificación se abrirá directamente en **Safari**.
 
 ### Opción B (Alternativa): Web App instalable (PWA) para iOS
 1. Abre [**`https://pablomartinez16.github.io/NotifAula/pwa.html`**](https://pablomartinez16.github.io/NotifAula/pwa.html) desde **Safari** en tu iPhone.
