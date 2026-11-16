@@ -546,26 +546,26 @@
 
     <!-- MODE 1: SCRIPTABLE + SHORTCUTS -->
     <section id="panel-scriptable" class="mode-panel active">
-      <h3>Comprobación automática cada ~5 min con Scriptable</h3>
+      <h3>Comprobación automática cada ~5 min con Scriptable + Atajos</h3>
       <p>
-        Como iOS restringe los procesos permanentes en segundo plano, <strong>NotifAula.js</strong> incluye un <strong>Widget nativo con refresco de 5 min</strong> y un <strong>temporizador interno de 5 min</strong> para Atajos de iOS:
+        Configura <strong>NotifAula.js</strong> en 4 pasos para recibir notificaciones nativas en segundo plano que abren el enlace directo en Safari:
       </p>
       <ul class="step-list">
         <li>
           <span class="step-pill">1</span>
-          <span>Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> en la App Store, descarga <code>NotifAula.js</code> abajo e impórtalo en Scriptable.</span>
+          <span>Instala gratis <a href="https://apps.apple.com/es/app/scriptable/id1405459188" target="_blank" rel="noopener" style="color: var(--ual-blue); font-weight: 700; text-decoration: underline;">Scriptable</a> en la App Store, descarga <code>NotifAula.js</code> abajo e impórtalo desde Safari (⬆️ Compartir → Scriptable → <em>Add to My Scripts</em>). Revisa que <em>Ajustes → Notificaciones → Scriptable</em> esté activado.</span>
         </li>
         <li>
           <span class="step-pill">2</span>
-          <span>Ejecuta <strong>NotifAula</strong> dentro de Scriptable, pulsa <em>«🔑 Iniciar sesión en aulavirtual.ual.es»</em> y cierra el navegador integrado cuando carguen tus cursos.</span>
+          <span>En <strong>Scriptable</strong>, si se abre el editor de código, pulsa <strong>Listo / Done</strong> arriba (<strong>no</strong> pulses el botón ▶️ abajo a la derecha) y toca <strong>NotifAula</strong> en tu lista. Luego pulsa <em>«🔑 Iniciar sesión en aulavirtual.ual.es»</em> y cierra la ventana cuando carguen tus cursos.</span>
         </li>
         <li>
           <span class="step-pill">3</span>
-          <span><strong>Opción A (Sin tocar Atajos · Widget en «Vista Hoy»):</strong> Desliza a la izquierda del todo en tu iPhone hasta la <em>Vista Hoy</em>, pulsa <strong><code>+</code></strong>, añade un widget de <strong>Scriptable</strong> y selecciona el script <strong>NotifAula</strong>. Tu pantalla de inicio queda libre de widgets y se refresca solo.</span>
+          <span>Abre la app <strong>Atajos → Automatización → <code>+</code> → App</strong>, elige tus 3-4 apps diarias (<em>WhatsApp, Instagram, Safari...</em>), marca <strong>«Al cerrarse»</strong> + <strong>«Ejecutar inmediatamente»</strong> y pulsa <em>Siguiente</em>.</span>
         </li>
         <li>
           <span class="step-pill">4</span>
-          <span><strong>Opción B (Sin widgets · 1 acción en Atajos):</strong> Ve a <strong>Atajos → Automatización → <code>+</code> → App</strong>, elige tus 3-4 apps diarias (<em>WhatsApp, Instagram, Safari...</em>), marca <strong>«Al cerrarse»</strong> + <strong>«Ejecutar inmediatamente»</strong> y pulsa <em>Siguiente</em>. Toca <strong>«Nueva automatización en blanco»</strong>, busca <strong>Scriptable → Run Script</strong> (viene por defecto), selecciona <strong>NotifAula</strong> y en <code>&gt;</code> desmarca <em>«Mostrar al ejecutar»</em>.</span>
+          <span>Toca <strong>«Nueva automatización en blanco»</strong>, busca <strong>Scriptable → Run Script</strong>, selecciona <strong>NotifAula</strong> y en <code>&gt;</code> desmarca <em>«Mostrar al ejecutar»</em>. El script filtra automáticamente para comprobar como máximo cada ~5 minutos.</span>
         </li>
       </ul>
       <div style="display: flex; flex-wrap: wrap; gap: 8px;">

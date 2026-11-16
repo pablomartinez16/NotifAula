@@ -29,13 +29,15 @@ Aplicación Android ligera (Kotlin + Jetpack Compose) que comprueba periódicame
 
 En iOS dispones de dos opciones **100 % gratuitas, sin cuenta de desarrollador de pago y sin servidores intermedios** que puedes usar juntas o por separado:
 
-### Opción A: Motor en segundo plano con Scriptable + Widget / Atajos cada ~5 min (Recomendada)
-1. Instala gratis [**Scriptable**](https://apps.apple.com/es/app/scriptable/id1405459188) desde la App Store.
-2. Descarga [`ios/NotifAula.js`](ios/NotifAula.js) (o desde la [web de NotifAula](https://pablomartinez16.github.io/NotifAula/#ios)) e impórtalo en Scriptable.
-3. Ejecuta **NotifAula** dentro de Scriptable y pulsa **«🔑 Iniciar sesión en aulavirtual.ual.es»** para autenticarte en la web oficial de la UAL y realizar la primera sincronización silenciosa.
-4. Elige una de estas dos opciones **100 % locales** para que compruebe en segundo plano (sin ensuciar tu pantalla de inicio):
-   - **Opción 1 (Sin tocar Atajos · Widget oculto en la «Vista Hoy»)**: Desliza a la izquierda del todo en tu iPhone hasta la pantalla lateral (*Vista Hoy*) → mantén pulsado → **`+`** → añade un widget de **Scriptable** → *Editar widget* → selecciona `NotifAula`. Tu pantalla de inicio queda limpia y iOS lo actualiza solo.
-   - **Opción 2 (Sin widgets · 1 acción en Atajos)**: Abre **Atajos → Automatización → `+` → App**, selecciona tus 3-4 apps diarias (*WhatsApp, Instagram, Safari...*), marca **«Al cerrarse»** + **«Ejecutar inmediatamente»** y pulsa *Siguiente*. Toca **«Nueva automatización en blanco»**, busca **Scriptable → Run Script** (aparece por defecto al tener instalada la app), elige `NotifAula` y en el desplegable `>` desmarca *«Mostrar al ejecutar»*. Al tocar cualquier notificación se abrirá directamente en **Safari**.
+### Opción A: Motor en segundo plano con Scriptable + Atajos de iOS (Recomendada)
+1. Instala gratis [**Scriptable**](https://apps.apple.com/es/app/scriptable/id1405459188) desde la App Store y activa sus permisos en *Ajustes → Notificaciones → Scriptable*.
+2. Descarga [`ios/NotifAula.js`](ios/NotifAula.js) (o desde la [web de NotifAula](https://pablomartinez16.github.io/NotifAula/#ios)) e impórtalo en Scriptable (*Compartir → Scriptable → Add to My Scripts*).
+3. En **Scriptable**, si ves el editor de código abierto, pulsa **Listo / Done** arriba (**no** pulses el botón ▶️ abajo a la derecha) y toca **NotifAula** en tu lista. Pulsa **«🔑 Iniciar sesión en aulavirtual.ual.es»**, autentícate en la web oficial de la UAL y pulsa **Cerrar / Done** arriba a la izquierda cuando carguen tus asignaturas (`✅ ¡Listo!`).
+4. Configura la automatización en **Atajos** (*Shortcuts*) para que compruebe cada ~5 minutos en segundo plano:
+   1. Abre **Atajos → Automatización → `+` → App**.
+   2. Selecciona tus 3-4 apps diarias (*WhatsApp, Instagram, Safari...*), marca **«Al cerrarse»** y **«Ejecutar inmediatamente»**, y pulsa **Siguiente**.
+   3. Toca **«Nueva automatización en blanco»** → busca **Scriptable → Run Script** → elige `NotifAula` y en el desplegable `>` desmarca **«Mostrar al ejecutar»**.
+   4. `NotifAula.js` incluye un filtro interno (~4-5 min) para no repetir comprobaciones ni gastar batería aunque abras y cierres apps seguidas. Al tocar cualquier notificación se abrirá el enlace directo en **Safari**.
 
 ### Opción B (Alternativa): Web App instalable (PWA) para iOS
 1. Abre [**`https://pablomartinez16.github.io/NotifAula/pwa.html`**](https://pablomartinez16.github.io/NotifAula/pwa.html) desde **Safari** en tu iPhone.
