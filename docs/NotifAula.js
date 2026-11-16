@@ -21,6 +21,7 @@ const BASE_URL = `https://${HOST}`;
 const ULTRA_URL = `${BASE_URL}/ultra/`;
 const STATE_FILE = "notifaula-state.json";
 const KEYCHAIN_USER_KEY = "notifaula_user_info";
+const KEYCHAIN_COOKIES_KEY = "notifaula_cookies";
 const WIDGET_REFRESH_MS = 5 * 60 * 1000; // Refresco solicitado para el Widget: 5 min
 const SHORTCUT_DEBOUNCE_MS = 4 * 60 * 1000; // Mínimo 4 min entre ejecuciones en segundo plano (~5 min reales sin saltar ciclos)
 
@@ -68,6 +69,46 @@ function saveUserInfo(info) {
 function clearAllData() {
   if (fm.fileExists(statePath)) fm.remove(statePath);
   if (Keychain.contains(KEYCHAIN_USER_KEY)) Keychain.remove(KEYCHAIN_USER_KEY);
+  if (Keychain.contains(KEYCHAIN_COOKIES_KEY)) Keychain.remove(KEYCHAIN_COOKIES_KEY);
+}
+
+function getSavedCookies() {
+  if (!Keychain.contains(KEYCHAIN_COOKIES_KEY)) return "";
+  try {
+    return Keychain.get(KEYCHAIN_COOKIES_KEY) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function saveCookies(cookieStr) {
+  if (cookieStr) {
+    Keychain.set(KEYCHAIN_COOKIES_KEY, cookieStr);
+  }
+}
+
+function mergeCookieString(existing, newPairs) {
+  const map = new Map();
+  for (const part of String(existing || "").split(";")) {
+    const idx = part.indexOf("=");
+    if (idx > 0) {
+      const k = part.slice(0, idx).trim();
+      const v = part.slice(idx + 1).trim();
+      if (k) map.set(k, v);
+    }
+  }
+  for (const c of newPairs || []) {
+    if (c && c.name) {
+      map.set(c.name, c.value || "");
+    }
+  }
+  return Array.from(map.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+}
+
+function extractXsrfFromCookies(cookieStr) {
+  const decoded = decodeURIComponent(cookieStr || "");
+  const m = decoded.match(/xsrf:([0-9a-fA-F-]{16,64})/);
+  return (m && m[1]) || "";
 }
 
 // ───────────────────────── Formato y utilidades ─────────────────────────
@@ -115,14 +156,13 @@ function extractDisplayName(me) {
   return me.userName || me.batchUid || u.userName || "";
 }
 
-async function resolveUserInfo(wv, me) {
+async function resolveUserInfo(api, me) {
   const userId = me.id;
   let displayName = extractDisplayName(me);
   // Si /learn/api/v1/users/me no trajo nombre/apellidos, consultamos el perfil público v1
   if (!displayName || displayName === userId || displayName.startsWith("_")) {
     try {
-      const pubMe = await evaluateApiInWebView(
-        wv,
+      const pubMe = await api.get(
         `/learn/api/public/v1/users/${encodeURIComponent(userId)}`
       );
       if (pubMe) {
@@ -215,18 +255,20 @@ function timeAgo(ts) {
 // ───────────────────────── Notificaciones nativas iOS ─────────────────────────
 
 async function sendNotification(item, index = 0) {
-  const n = new Notification();
-  n.identifier = String(item.id || ("notifaula_" + Date.now()));
-  n.title = item.title || "NotifAula";
-  if (item.courseName) n.subtitle = item.courseName;
-  n.body = item.body || item.courseName || "";
-  if (item.url) n.openURL = item.url;
-  n.sound = "default";
-  n.threadIdentifier = "notifaula";
-  // En iOS/Scriptable es necesario programar setTriggerDate en el futuro inmediato
-  // para que UNUserNotificationCenter entregue siempre el banner y sonido
-  n.setTriggerDate(new Date(Date.now() + 1500 + index * 400));
-  await n.schedule();
+  try {
+    const n = new Notification();
+    n.identifier = String(item.id || ("notifaula_" + Date.now()));
+    n.title = item.title || "NotifAula";
+    if (item.courseName) n.subtitle = item.courseName;
+    n.body = item.body || item.courseName || "";
+    if (item.url) n.openURL = item.url;
+    n.sound = "default";
+    n.threadIdentifier = "notifaula";
+    n.setTriggerDate(new Date(Date.now() + 1500 + index * 400));
+    await n.schedule();
+  } catch (e) {
+    // No bloquear el resto del flujo si iOS restringe notificaciones en este contexto
+  }
 }
 
 async function sendSessionExpiredNotification() {
@@ -241,6 +283,81 @@ async function sendSessionExpiredNotification() {
 }
 
 // ───────────────────────── Login y Motor WebKit ─────────────────────────
+
+async function captureCookiesFromWebView(wv) {
+  try {
+    const rawCookie = await wv.evaluateJavaScript("document.cookie || '';", false);
+    if (rawCookie && String(rawCookie).trim()) {
+      const merged = mergeCookieString(getSavedCookies(),
+        String(rawCookie).split(";").map(p => {
+          const i = p.indexOf("=");
+          return i > 0 ? { name: p.slice(0, i).trim(), value: p.slice(i + 1).trim() } : null;
+        }).filter(Boolean)
+      );
+      saveCookies(merged);
+      return merged;
+    }
+  } catch (e) {
+    // Ignorar
+  }
+  return getSavedCookies();
+}
+
+/**
+ * Cliente HTTP ligero basado en Request (URLSession, ~1 MB RAM) que funciona
+ * dentro del límite estricto de 30 MB de iOS WidgetKit sin abrir WebKit.
+ */
+async function apiGetWithRequest(pathAndQuery) {
+  const cookieStr = getSavedCookies();
+  if (!cookieStr) {
+    throw new Error("SESSION_EXPIRED");
+  }
+  const fullUrl = pathAndQuery.startsWith("http")
+    ? pathAndQuery
+    : `${BASE_URL}${pathAndQuery.startsWith("/") ? "" : "/"}${pathAndQuery}`;
+
+  const req = new Request(fullUrl);
+  req.method = "GET";
+  req.timeoutInterval = 15;
+  const headers = {
+    "Accept": "application/json, text/plain, */*",
+    "Cookie": cookieStr
+  };
+  const xsrf = extractXsrfFromCookies(cookieStr);
+  if (xsrf) {
+    headers["X-Blackboard-XSRF"] = xsrf;
+  }
+  req.headers = headers;
+
+  const text = await req.loadString();
+  const status = (req.response && req.response.statusCode) || 0;
+  if (req.response && Array.isArray(req.response.cookies) && req.response.cookies.length > 0) {
+    saveCookies(mergeCookieString(cookieStr, req.response.cookies));
+  }
+  if (status === 401 || status === 403) {
+    throw new Error("SESSION_EXPIRED");
+  }
+  if (status < 200 || status >= 300) {
+    return null;
+  }
+  if (!text || String(text).trim().startsWith("<")) {
+    throw new Error("SESSION_EXPIRED");
+  }
+  return JSON.parse(text);
+}
+
+function createApiClient(wvOrNull) {
+  if (!wvOrNull) {
+    return {
+      get: (p) => apiGetWithRequest(p),
+      batch: (paths) => Promise.all(paths.map(p => apiGetWithRequest(p).catch(() => null)))
+    };
+  }
+  return {
+    get: (p) => evaluateApiInWebView(wvOrNull, p),
+    batch: (paths) => evaluateBatchInWebView(wvOrNull, paths)
+  };
+}
 
 /**
  * Abre la web oficial de aulavirtual.ual.es para que el usuario inicie sesión
@@ -275,7 +392,8 @@ async function interactiveLogin() {
     return null;
   }
 
-  return await resolveUserInfo(wv, me);
+  await captureCookiesFromWebView(wv);
+  return await resolveUserInfo(createApiClient(wv), me);
 }
 
 /**
@@ -411,24 +529,48 @@ function diff(state, scope, items, keyFn, fpFn, buildNotificationFn) {
 
 async function runSync() {
   const state = loadState();
-  const wv = new WebView();
-  // Cargamos un recurso ligero del mismo origen para inicializar el contexto WebKit de cookies
-  await wv.loadURL(`${BASE_URL}/learn/api/v1/utilities/timeUntilBbSessionInactive?forceLogout=false`);
+  let api = null;
+  let me = null;
 
-  const me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
-  if (!me || !me.id) {
-    throw new Error("SESSION_EXPIRED");
+  // 1) Intentar primero con Request ligero (0 WebView, imprescindible para que el Widget no supere 30 MB RAM)
+  if (getSavedCookies()) {
+    try {
+      const reqApi = createApiClient(null);
+      const candidateMe = await reqApi.get("/learn/api/v1/users/me");
+      if (candidateMe && candidateMe.id) {
+        api = reqApi;
+        me = candidateMe;
+      }
+    } catch (e) {
+      api = null;
+      me = null;
+    }
   }
 
-  const userInfo = await resolveUserInfo(wv, me);
+  // 2) Si Request no tiene cookies válidas: en Widget nunca abrimos WebView (causa OOM en iOS WidgetKit);
+  // fuera del Widget usamos WebView como respaldo y guardamos las cookies para futuras ejecuciones del Widget.
+  if (!api || !me) {
+    if (config.runsInWidget) {
+      throw new Error("SESSION_EXPIRED");
+    }
+    const wv = new WebView();
+    await wv.loadURL(`${BASE_URL}/learn/api/v1/utilities/timeUntilBbSessionInactive?forceLogout=false`);
+    me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
+    if (!me || !me.id) {
+      throw new Error("SESSION_EXPIRED");
+    }
+    await captureCookiesFromWebView(wv);
+    api = createApiClient(wv);
+  }
+
+  const userInfo = await resolveUserInfo(api, me);
   const userId = userInfo.userId;
 
   state.runCounter = (state.runCounter || 0) + 1;
   const fullContentScan = (state.runCounter % 4 === 1);
 
   // 1) Obtener asignaturas activas
-  const membershipsResp = await evaluateApiInWebView(
-    wv,
+  const membershipsResp = await api.get(
     `/learn/api/v1/users/${encodeURIComponent(userId)}/memberships?expand=course.effectiveAvailability,courseRole&includeCount=true&limit=10000`
   );
   const memberships = (membershipsResp && membershipsResp.results) || [];
@@ -455,7 +597,7 @@ async function runSync() {
 
     // En modo Widget hacemos las 4 consultas base (incluyendo raíz de contenidos) en 1 solo lote
     // para no superar el límite de memoria/tiempo de iOS WidgetKit
-    const [annResp, gradesResp, convCounts, rootContentResp] = await evaluateBatchInWebView(wv, [
+    const [annResp, gradesResp, convCounts, rootContentResp] = await api.batch([
       `/learn/api/v1/courses/${encodeURIComponent(cid)}/announcements?limit=25&offset=0&sort=${encodeURIComponent("startDateRestriction(desc)")}`,
       `/learn/api/v1/courses/${encodeURIComponent(cid)}/gradebook/grades?userId=${encodeURIComponent(userId)}&limit=100&offset=0&expand=${encodeURIComponent("lastAttempt,column")}&includeNoGradeItems=true`,
       `/learn/api/v1/courses/${encodeURIComponent(cid)}/conversations/counts`,
@@ -560,7 +702,7 @@ async function runSync() {
     const isBaselineContent = !state.seen[`init:content:${cid}`];
     const collectedNodes = [];
     await walkCourseContent(
-      wv,
+      api,
       cid,
       "ROOT",
       "",
@@ -676,10 +818,9 @@ async function runSync() {
   return { coursesChecked: courses.length, newCount: newNotifications.length };
 }
 
-async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, state, out, preloadedResp = null, maxDepth = 2) {
+async function walkCourseContent(api, cid, parentId, breadcrumb, depth, full, state, out, preloadedResp = null, maxDepth = 2) {
   if (depth > maxDepth || out.length > 400) return;
-  const resp = preloadedResp || await evaluateApiInWebView(
-    wv,
+  const resp = preloadedResp || await api.get(
     `/learn/api/v1/courses/${encodeURIComponent(cid)}/contents/${encodeURIComponent(parentId)}/children?@view=Summary&limit=200`
   );
   const children = (resp && resp.results) || [];
@@ -699,7 +840,7 @@ async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, sta
     const paths = subFolders.map(
       f => `/learn/api/v1/courses/${encodeURIComponent(cid)}/contents/${encodeURIComponent(f.id)}/children?@view=Summary&limit=200`
     );
-    const batchResults = await evaluateBatchInWebView(wv, paths);
+    const batchResults = await api.batch(paths);
     for (let i = 0; i < subFolders.length; i++) {
       const folder = subFolders[i];
       const subResp = batchResults[i];
@@ -754,7 +895,8 @@ async function showAppMenu() {
       await wv.loadURL(`${BASE_URL}/learn/api/v1/utilities/timeUntilBbSessionInactive?forceLogout=false`);
       const me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
       if (me && me.id) {
-        user = await resolveUserInfo(wv, me);
+        await captureCookiesFromWebView(wv);
+        user = await resolveUserInfo(createApiClient(wv), me);
       }
     } catch (e) {
       // Ignorar si falla
@@ -899,7 +1041,10 @@ function buildWidget(state, user, sessionExpired) {
   }
 
   w.addSpacer();
-  const foot = w.addText(`Actualizado ${timeAgo(state.lastPoll)}`);
+  const timeStr = state.lastPoll
+    ? new Date(state.lastPoll).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+    : "nunca";
+  const foot = w.addText(`Actualizado a las ${timeStr}`);
   foot.font = Font.systemFont(10);
   foot.textColor = new Color("#DBEAFE");
   return w;
