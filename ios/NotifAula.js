@@ -214,15 +214,18 @@ function timeAgo(ts) {
 
 // ───────────────────────── Notificaciones nativas iOS ─────────────────────────
 
-async function sendNotification(item) {
+async function sendNotification(item, index = 0) {
   const n = new Notification();
-  n.identifier = item.id;
-  n.title = item.title;
+  n.identifier = String(item.id || ("notifaula_" + Date.now()));
+  n.title = item.title || "NotifAula";
   if (item.courseName) n.subtitle = item.courseName;
   n.body = item.body || item.courseName || "";
-  n.openURL = item.url;
+  if (item.url) n.openURL = item.url;
   n.sound = "default";
   n.threadIdentifier = "notifaula";
+  // En iOS/Scriptable es necesario programar setTriggerDate en el futuro inmediato
+  // para que UNUserNotificationCenter entregue siempre el banner y sonido
+  n.setTriggerDate(new Date(Date.now() + 1500 + index * 400));
   await n.schedule();
 }
 
@@ -233,6 +236,7 @@ async function sendSessionExpiredNotification() {
   n.body = "Abre Scriptable → NotifAula para volver a iniciar sesión.";
   n.openURL = "scriptable:///run/" + encodeURIComponent(Script.name());
   n.sound = "default";
+  n.setTriggerDate(new Date(Date.now() + 1500));
   await n.schedule();
 }
 
@@ -443,19 +447,28 @@ async function runSync() {
   }
 
   const newNotifications = [];
+  const readExactIds = new Set();
+  const readPrefixes = [];
 
   for (const course of courses) {
     const cid = course.id;
 
-    // 2, 3 y 5 en paralelo dentro de un único lote WebKit por asignatura (mucho más rápido en Atajos de iOS)
-    const [annResp, gradesResp, convCounts] = await evaluateBatchInWebView(wv, [
+    // En modo Widget hacemos las 4 consultas base (incluyendo raíz de contenidos) en 1 solo lote
+    // para no superar el límite de memoria/tiempo de iOS WidgetKit
+    const [annResp, gradesResp, convCounts, rootContentResp] = await evaluateBatchInWebView(wv, [
       `/learn/api/v1/courses/${encodeURIComponent(cid)}/announcements?limit=25&offset=0&sort=${encodeURIComponent("startDateRestriction(desc)")}`,
       `/learn/api/v1/courses/${encodeURIComponent(cid)}/gradebook/grades?userId=${encodeURIComponent(userId)}&limit=100&offset=0&expand=${encodeURIComponent("lastAttempt,column")}&includeNoGradeItems=true`,
-      `/learn/api/v1/courses/${encodeURIComponent(cid)}/conversations/counts`
+      `/learn/api/v1/courses/${encodeURIComponent(cid)}/conversations/counts`,
+      `/learn/api/v1/courses/${encodeURIComponent(cid)}/contents/ROOT/children?@view=Summary&limit=200`
     ]);
 
     // 2) Anuncios
     const announcements = ((annResp && annResp.results) || []).filter(a => !a.isDraft);
+    for (const a of announcements) {
+      if (a.readStatus && a.readStatus.isRead) {
+        readExactIds.add(`ann:${cid}:${a.id}`);
+      }
+    }
     newNotifications.push(...diff(
       state,
       `ann:${cid}`,
@@ -471,6 +484,7 @@ async function runSync() {
         return {
           id: `ann:${cid}:${a.id}`,
           type: "ANNOUNCEMENT",
+          courseId: cid,
           courseName: course.shortName,
           title: `📢 ${a.title || "Nuevo anuncio"}`,
           body: body || `Nuevo anuncio en ${course.shortName}`,
@@ -485,6 +499,11 @@ async function runSync() {
       const col = g.column || {};
       return col.visible !== false && col.gradesReleased !== false;
     });
+    for (const g of grades) {
+      if (g.hasBeenViewedByStudent || g.studentReviewedTimestamp) {
+        readPrefixes.push(`grade:${cid}:${g.columnId}:`);
+      }
+    }
 
     function gradeScoreText(g) {
       const dg = g.displayGrade;
@@ -537,10 +556,21 @@ async function runSync() {
       }
     ));
 
-    // 4) Contenidos (recorrido de árbol de carpetas)
+    // 4) Contenidos (recorrido de árbol de carpetas; en Widget solo raíz ya obtenida para máxima ligereza)
     const isBaselineContent = !state.seen[`init:content:${cid}`];
     const collectedNodes = [];
-    await walkCourseContent(wv, cid, "ROOT", "", 0, fullContentScan || isBaselineContent, state, collectedNodes);
+    await walkCourseContent(
+      wv,
+      cid,
+      "ROOT",
+      "",
+      0,
+      fullContentScan || isBaselineContent,
+      state,
+      collectedNodes,
+      rootContentResp,
+      config.runsInWidget ? 0 : 2
+    );
 
     const contentNews = diff(
       state,
@@ -589,6 +619,10 @@ async function runSync() {
       const unread = convCounts.unreadCount;
       const msgKey = `conv:course:${cid}`;
       const baseMsgKey = `init:${msgKey}`;
+      // Si ya no hay mensajes sin leer en esta asignatura, quitar el aviso del widget/historial
+      if (unread === 0) {
+        readPrefixes.push(`msg:${cid}:`);
+      }
       if (!state.seen[baseMsgKey]) {
         state.seen[msgKey] = String(unread);
         state.seen[baseMsgKey] = "1";
@@ -596,6 +630,8 @@ async function runSync() {
         const oldUnread = parseInt(state.seen[msgKey] || "0", 10) || 0;
         state.seen[msgKey] = String(unread);
         if (unread > oldUnread) {
+          // Reemplazar aviso anterior de mensajes de esta misma asignatura por el nuevo
+          readPrefixes.push(`msg:${cid}:`);
           const delta = unread - oldUnread;
           const title = delta === 1
             ? `✉️ 1 mensaje nuevo en ${course.shortName}`
@@ -606,6 +642,7 @@ async function runSync() {
           newNotifications.push({
             id: `msg:${cid}:${Date.now()}`,
             type: "MESSAGE",
+            courseId: cid,
             courseName: course.shortName,
             title,
             body,
@@ -618,20 +655,30 @@ async function runSync() {
   }
 
   // Enviar notificaciones nativas de iOS
-  for (const item of newNotifications) {
-    await sendNotification(item);
+  for (let i = 0; i < newNotifications.length; i++) {
+    await sendNotification(newNotifications[i], i);
   }
 
-  state.history = [...newNotifications, ...(state.history || [])].slice(0, 100);
+  // Limpiar del historial/widget los mensajes, anuncios o notas que ya han sido leídos en Blackboard
+  const cleanedHistory = (state.history || []).filter(item => {
+    const id = String(item.id || "");
+    if (readExactIds.has(id)) return false;
+    for (const prefix of readPrefixes) {
+      if (id.startsWith(prefix)) return false;
+    }
+    return true;
+  });
+
+  state.history = [...newNotifications, ...cleanedHistory].slice(0, 100);
   state.lastPoll = Date.now();
   saveState(state);
 
   return { coursesChecked: courses.length, newCount: newNotifications.length };
 }
 
-async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, state, out) {
-  if (depth > 2 || out.length > 400) return;
-  const resp = await evaluateApiInWebView(
+async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, state, out, preloadedResp = null, maxDepth = 2) {
+  if (depth > maxDepth || out.length > 400) return;
+  const resp = preloadedResp || await evaluateApiInWebView(
     wv,
     `/learn/api/v1/courses/${encodeURIComponent(cid)}/contents/${encodeURIComponent(parentId)}/children?@view=Summary&limit=200`
   );
@@ -648,7 +695,7 @@ async function walkCourseContent(wv, cid, parentId, breadcrumb, depth, full, sta
       }
     }
   }
-  if (subFolders.length > 0 && depth + 1 <= 2) {
+  if (subFolders.length > 0 && depth + 1 <= maxDepth) {
     const paths = subFolders.map(
       f => `/learn/api/v1/courses/${encodeURIComponent(cid)}/contents/${encodeURIComponent(f.id)}/children?@view=Summary&limit=200`
     );
@@ -717,13 +764,18 @@ async function showAppMenu() {
   const alert = new Alert();
   alert.title = "🔔 NotifAula para iOS";
   if (user) {
-    alert.message = `👤 ${user.displayName}\nÚltima comprobación: ${timeAgo(state.lastPoll)}\nAvisos en historial: ${(state.history || []).length}`;
+    const unreadList = (state.history || []).filter(x => !x.isRead);
+    alert.message = `👤 ${user.displayName}\nÚltima comprobación: ${timeAgo(state.lastPoll)}\nAvisos sin leer: ${unreadList.length} (Total: ${(state.history || []).length})`;
     alert.addAction("🔄 Comprobar novedades ahora");
     alert.addAction("📜 Ver últimos avisos");
+    if ((state.history || []).length > 0) {
+      alert.addAction("🧹 Limpiar avisos del widget / historial");
+    }
     alert.addAction("🔑 Volver a iniciar sesión");
     alert.addDestructiveAction("🗑️ Cerrar sesión y borrar datos");
     alert.addCancelAction("Cerrar");
 
+    const hasClearBtn = (state.history || []).length > 0;
     const choice = await alert.presentSheet();
     if (choice === 0) {
       try {
@@ -739,10 +791,19 @@ async function showAppMenu() {
         }
       }
     } else if (choice === 1) {
-      await showHistoryMenu(state.history || []);
-    } else if (choice === 2) {
+      await showHistoryMenu(state);
+    } else if (hasClearBtn && choice === 2) {
+      state.history = [];
+      saveState(state);
+      Notification.removeAllDelivered();
+      const ok = new Alert();
+      ok.title = "Historial y widget limpiados";
+      ok.message = "Se han quitado todos los avisos pendientes del widget y del historial.";
+      ok.addAction("OK");
+      await ok.present();
+    } else if ((hasClearBtn && choice === 3) || (!hasClearBtn && choice === 2)) {
       await interactiveLogin();
-    } else if (choice === 3) {
+    } else if ((hasClearBtn && choice === 4) || (!hasClearBtn && choice === 3)) {
       clearAllData();
     }
   } else {
@@ -764,7 +825,8 @@ async function showAppMenu() {
   }
 }
 
-async function showHistoryMenu(history) {
+async function showHistoryMenu(state) {
+  const history = state.history || [];
   if (!history.length) {
     const a = new Alert();
     a.title = "Sin avisos recientes";
@@ -778,14 +840,19 @@ async function showHistoryMenu(history) {
   for (const item of history.slice(0, 40)) {
     const row = new UITableRow();
     row.height = 76;
+    const prefix = item.isRead ? "" : "🔵 ";
     const cell = row.addText(
-      `${item.courseName ? `[${item.courseName}] ` : ""}${item.title}`,
+      `${prefix}${item.courseName ? `[${item.courseName}] ` : ""}${item.title}`,
       `${item.body || ""} · ${timeAgo(item.timestamp)}`
     );
     cell.titleFont = Font.boldSystemFont(15);
     cell.subtitleFont = Font.systemFont(13);
     cell.subtitleColor = Color.gray();
-    row.onSelect = () => Safari.open(item.url);
+    row.onSelect = () => {
+      item.isRead = true;
+      saveState(state);
+      Safari.open(item.url);
+    };
     table.addRow(row);
   }
   await table.present(false);
@@ -805,6 +872,9 @@ function buildWidget(state, user, sessionExpired) {
   header.textColor = Color.white();
   w.addSpacer(6);
 
+  // Al tocar el widget, ejecutamos NotifAula con ?fromWidget=1 para marcar como leído y abrir Safari (o sincronizar)
+  w.url = "scriptable:///run/" + encodeURIComponent(Script.name()) + "?fromWidget=1";
+
   if (sessionExpired || !user) {
     const msg = w.addText("Toca para iniciar sesión en aulavirtual.ual.es");
     msg.font = Font.systemFont(13);
@@ -812,7 +882,8 @@ function buildWidget(state, user, sessionExpired) {
     return w;
   }
 
-  const latest = (state.history || [])[0];
+  // Mostrar en el widget únicamente el último aviso NO leído
+  const latest = (state.history || []).find(x => !x.isRead);
   if (latest) {
     const courseTxt = w.addText(latest.courseName || "Aula Virtual");
     courseTxt.font = Font.boldSystemFont(11);
@@ -821,7 +892,6 @@ function buildWidget(state, user, sessionExpired) {
     titleTxt.font = Font.boldSystemFont(13);
     titleTxt.textColor = Color.white();
     titleTxt.lineLimit = 2;
-    w.url = latest.url;
   } else {
     const okTxt = w.addText("Todo al día · Sin avisos nuevos");
     okTxt.font = Font.systemFont(13);
@@ -836,14 +906,30 @@ function buildWidget(state, user, sessionExpired) {
 }
 
 async function main() {
-  if (config.runsInApp) {
+  const qp = (args && args.queryParameters) || {};
+  if (qp.fromWidget === "1") {
+    const state = loadState();
+    const latest = (state.history || []).find(x => !x.isRead);
+    if (latest && latest.url) {
+      latest.isRead = true;
+      saveState(state);
+      Safari.open(latest.url);
+    } else {
+      try {
+        await runSync();
+      } catch (e) {
+        // Si caducó la sesión, el menú lo gestionará
+      }
+      await showAppMenu();
+    }
+  } else if (config.runsInApp) {
     await showAppMenu();
   } else if (config.runsInWidget) {
-    // Ejecutado automáticamente por un Widget de Scriptable en la pantalla de inicio de iOS
+    // Ejecutado automáticamente por un Widget de Scriptable: sincronizar siempre que iOS refresque el widget
     let expired = false;
     try {
       const state = loadState();
-      if (!state.lastPoll || Date.now() - state.lastPoll >= SHORTCUT_DEBOUNCE_MS) {
+      if (!state.lastPoll || Date.now() - state.lastPoll >= 15000) {
         await runSync();
       }
     } catch (e) {
