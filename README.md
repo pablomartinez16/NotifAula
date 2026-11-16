@@ -33,9 +33,15 @@ En iOS dispones de dos opciones **100 % gratuitas, sin cuenta de desarrollador d
 1. Instala gratis [**Scriptable**](https://apps.apple.com/es/app/scriptable/id1405459188) desde la App Store.
 2. Descarga [`ios/NotifAula.js`](ios/NotifAula.js) (o desde la [web de NotifAula](https://pablomartinez16.github.io/NotifAula/#ios)) e impórtalo en Scriptable.
 3. Ejecuta **NotifAula** dentro de Scriptable y pulsa **«🔑 Iniciar sesión en aulavirtual.ual.es»** para autenticarte en la web oficial de la UAL y realizar la primera sincronización silenciosa.
-4. Para que compruebe automáticamente cada **~5 minutos** en segundo plano:
-   - **Widget automático en pantalla de inicio**: Añade un widget de **Scriptable** a tu pantalla de inicio → *Editar widget* → selecciona el script `NotifAula`. El widget solicita a iOS actualizarse cada 5 minutos (`refreshAfterDate`) y muestra el último aviso.
-   - **Automatización en Atajos (*Shortcuts*)**: En la app **Atajos → Automatización → `+` → App**, selecciona tus 3-4 apps habituales (WhatsApp, Safari, Instagram...), marca **«Al cerrarse»** + **«Ejecutar inmediatamente»** y añade la acción **Scriptable → Run Script (`NotifAula`)** desmarcando *«Mostrar al ejecutar»*. Como `NotifAula.js` incluye un control interno de 5 minutos (`MIN_AUTO_INTERVAL_MS`), solo comprobará el Aula Virtual cuando hayan transcurrido al menos 5 minutos desde la última comprobación. Al tocar cualquier notificación se abrirá directamente en **Safari**.
+4. Para que compruebe automáticamente cada **5 minutos** en segundo plano:
+   - **Bucle automático cada 5 min en Atajos (funciona incluso con la pantalla apagada)**:
+     1. En *Ajustes → Concentración*, crea un modo de concentración llamado **NotifAula** (permitiendo todas las notificaciones).
+     2. En **Atajos → Automatización → `+` → Concentración (`NotifAula`)**, selecciona **«Al desactivarse»** + **«Ejecutar inmediatamente»** y añade estas 3 acciones:
+        - **Scriptable → Run Script (`NotifAula`)** (desmarcando *«Mostrar al ejecutar»*).
+        - **Fecha → Ajustar fecha**: *Sumar `5` minutos* a *Fecha actual*.
+        - **Ajustar concentración**: *Activar `NotifAula` hasta Hora `[Fecha ajustada]`*.
+     3. Activa una vez el modo de concentración `NotifAula` durante 5 minutos y a partir de ese momento se re-programará solo cada 5 minutos.
+   - **Alternativa rápida (Widget + Al cerrar apps)**: Añade un widget de **Scriptable** (`NotifAula`) en la pantalla de inicio y/o una automatización en **Atajos → App → Al cerrarse** con tus apps habituales. Al tocar cualquier notificación se abrirá directamente en **Safari**.
 
 ### Opción B (Alternativa): Web App instalable (PWA) para iOS
 1. Abre [**`https://pablomartinez16.github.io/NotifAula/pwa.html`**](https://pablomartinez16.github.io/NotifAula/pwa.html) desde **Safari** en tu iPhone.

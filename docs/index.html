@@ -679,10 +679,15 @@ Hola, podéis entregarlo hasta el viernes a las 23:59...</div>
 
         <div class="card">
           <div class="step-number">3</div>
-          <h3>Activa la comprobación cada ~5 min</h3>
+          <h3>Notificaciones cada 5 min en Atajos</h3>
           <p>
-            <strong>Opción A (Widget automático):</strong> Mantén pulsada tu pantalla de inicio → <strong><code>+</code></strong> → busca <strong>Scriptable</strong> → añade un widget → mantén pulsado el widget → <em>Editar widget</em> → en <em>Script</em> elige <strong>NotifAula</strong>.<br />
-            <strong>Opción B (Atajos cada 5 min):</strong> En la app <strong>Atajos → Automatización → <code>+</code> → App</strong>, elige tus 3-4 apps habituales (WhatsApp, Safari, Instagram), marca <em>«Al cerrarse»</em> + <em>«Ejecutar inmediatamente»</em> y añade la acción <strong>Scriptable → Run Script (NotifAula)</strong> desmarcando <em>«Mostrar al ejecutar»</em>. El script lleva un temporizador interno para comprobar como máximo una vez cada <strong>5 minutos</strong>.
+            <strong>Bucle automático cada 5 min (con pantalla apagada):</strong><br />
+            1. En <em>Ajustes → Concentración</em>, crea un modo llamado <strong>NotifAula</strong> (sin silenciar avisos).<br />
+            2. En la app <strong>Atajos → Automatización → <code>+</code> → Concentración (NotifAula)</strong>, marca <em>«Al desactivarse»</em> + <em>«Ejecutar inmediatamente»</em> y añade estas 3 acciones:<br />
+            • <strong>Scriptable → Run Script (NotifAula)</strong> (desmarcando <em>Mostrar al ejecutar</em>).<br />
+            • <strong>Ajustar fecha</strong>: <em>Sumar 5 minutos</em> a <em>Fecha actual</em>.<br />
+            • <strong>Ajustar concentración</strong>: <em>Activar NotifAula hasta Hora [Fecha ajustada]</em>.<br />
+            <em>(También puedes añadir el <strong>Widget de Scriptable</strong> en tu pantalla de inicio o usar el disparador «Al cerrar App» en Atajos).</em>
           </p>
         </div>
       </div>

@@ -561,11 +561,11 @@
         </li>
         <li>
           <span class="step-pill">3</span>
-          <span><strong>Widget automático (5 min):</strong> Añade un widget de <strong>Scriptable</strong> a tu pantalla de inicio, edítalo y selecciona el script <strong>NotifAula</strong>.</span>
+          <span><strong>Bucle cada 5 min en Atajos (incluso con pantalla bloqueada):</strong> Crea un modo de concentración llamado <strong>NotifAula</strong> en <em>Ajustes → Concentración</em>. Luego en <strong>Atajos → Automatización → <code>+</code> → Concentración (NotifAula)</strong> marca <em>«Al desactivarse»</em> + <em>«Ejecutar inmediatamente»</em> y pon 3 acciones: 1) <em>Scriptable → Run Script (NotifAula)</em> sin mostrar al ejecutar, 2) <em>Ajustar fecha</em>: sumar 5 minutos a <em>Fecha actual</em>, y 3) <em>Ajustar concentración</em>: activar <em>NotifAula</em> hasta <em>Hora [Fecha ajustada]</em>.</span>
         </li>
         <li>
           <span class="step-pill">4</span>
-          <span><strong>Atajo en segundo plano (cada 5 min):</strong> En <strong>Atajos → Automatización → <code>+</code> → App</strong>, elige tus 3-4 apps más usadas (WhatsApp, Safari, Instagram), marca <em>«Al cerrarse»</em> + <em>«Ejecutar inmediatamente»</em> y añade <strong>Scriptable → Run Script (NotifAula)</strong> desmarcando <em>«Mostrar al ejecutar»</em>. El script solo comprobará si han pasado ≥ 5 minutos desde la última vez.</span>
+          <span><strong>Alternativa con Widget / Al cerrar apps:</strong> Añade un widget de <strong>Scriptable</strong> con el script <strong>NotifAula</strong> o crea una automatización <em>Al cerrarse</em> tus apps habituales (WhatsApp, Safari, Instagram).</span>
         </li>
       </ul>
       <div style="display: flex; flex-wrap: wrap; gap: 8px;">

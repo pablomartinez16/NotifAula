@@ -21,7 +21,8 @@ const BASE_URL = `https://${HOST}`;
 const ULTRA_URL = `${BASE_URL}/ultra/`;
 const STATE_FILE = "notifaula-state.json";
 const KEYCHAIN_USER_KEY = "notifaula_user_info";
-const MIN_AUTO_INTERVAL_MS = 5 * 60 * 1000; // Intervalo mínimo automático: 5 minutos
+const WIDGET_REFRESH_MS = 5 * 60 * 1000; // Refresco solicitado para el Widget: 5 min
+const SHORTCUT_DEBOUNCE_MS = 50 * 1000;  // Evita dobles ejecuciones accidentales (<50s), sin bloquear ciclos de 5 min
 
 const LOWERCASE_WORDS = new Set([
   "de", "del", "la", "las", "el", "los", "y", "e", "o", "u", "a", "en", "con", "por", "para", "al"
@@ -70,6 +71,75 @@ function clearAllData() {
 }
 
 // ───────────────────────── Formato y utilidades ─────────────────────────
+
+function formatPersonName(raw) {
+  if (!raw) return "";
+  return String(raw)
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w, idx) => {
+      if (idx > 0 && LOWERCASE_WORDS.has(w)) return w;
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(" ");
+}
+
+function extractDisplayName(me) {
+  if (!me) return "";
+  const n = (me.name && typeof me.name === "object") ? me.name : {};
+  const u = (me.user && typeof me.user === "object") ? me.user : {};
+  const un = (u.name && typeof u.name === "object") ? u.name : {};
+
+  const given =
+    me.givenName || n.given || n.givenName || me.firstName || u.givenName || un.given || "";
+  const family =
+    me.familyName || n.family || n.familyName || me.lastName || u.familyName || un.family || "";
+  const middle =
+    me.middleName || n.middle || n.middleName || u.middleName || un.middle || "";
+
+  const combined = [given, middle, family].map(s => String(s || "").trim()).filter(Boolean).join(" ");
+  const full =
+    combined ||
+    (typeof me.name === "string" ? me.name.trim() : "") ||
+    me.fullName ||
+    me.displayName ||
+    n.fullName ||
+    n.displayName ||
+    u.fullName ||
+    u.displayName ||
+    "";
+
+  if (full) return formatPersonName(full);
+  return me.userName || me.batchUid || u.userName || "";
+}
+
+async function resolveUserInfo(wv, me) {
+  const userId = me.id;
+  let displayName = extractDisplayName(me);
+  // Si /learn/api/v1/users/me no trajo nombre/apellidos, consultamos el perfil público v1
+  if (!displayName || displayName === userId || displayName.startsWith("_")) {
+    try {
+      const pubMe = await evaluateApiInWebView(
+        wv,
+        `/learn/api/public/v1/users/${encodeURIComponent(userId)}`
+      );
+      if (pubMe) {
+        const pubName = extractDisplayName(pubMe);
+        if (pubName) displayName = pubName;
+      }
+    } catch (e) {
+      // Ignorar si no está disponible
+    }
+  }
+  if (!displayName || displayName.startsWith("_")) {
+    displayName = me.userName || "Estudiante UAL";
+  }
+  const info = { userId, displayName };
+  saveUserInfo(info);
+  return info;
+}
 
 function shortCourseName(full) {
   if (!full) return "";
@@ -168,11 +238,16 @@ async function sendSessionExpiredNotification() {
 
 // ───────────────────────── Login y Motor WebKit ─────────────────────────
 
+/**
+ * Abre la web oficial de aulavirtual.ual.es para que el usuario inicie sesión
+ * y verifica la sesión contra /learn/api/v1/users/me.
+ */
 async function interactiveLogin() {
   const wv = new WebView();
   await wv.loadURL(ULTRA_URL);
   await wv.present(false);
 
+  // Al cerrar el WebView tras entrar en /ultra, verificamos la sesión dentro de WebKit
   let me = null;
   try {
     me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
@@ -196,14 +271,14 @@ async function interactiveLogin() {
     return null;
   }
 
-  const given = (me.name && me.name.given) || "";
-  const family = (me.name && me.name.family) || "";
-  const displayName = `${given} ${family}`.trim() || me.userName || me.id;
-  const info = { userId: me.id, displayName };
-  saveUserInfo(info);
-  return info;
+  return await resolveUserInfo(wv, me);
 }
 
+/**
+ * Ejecuta una petición autenticada a la API interna de Blackboard Ultra
+ * desde el contexto del WebView de Scriptable (usando completion() + null final
+ * requerido por WKWebView en iOS cuando useCallback = true).
+ */
 async function evaluateApiInWebView(wv, pathAndQuery) {
   const fullUrl = pathAndQuery.startsWith("http")
     ? pathAndQuery
@@ -257,6 +332,10 @@ async function evaluateApiInWebView(wv, pathAndQuery) {
   return parsed;
 }
 
+/**
+ * Ejecuta un lote de peticiones GET en paralelo dentro de una única llamada
+ * a WKWebView.evaluateJavaScript (evitando colisiones de completion en iOS).
+ */
 async function evaluateBatchInWebView(wv, paths) {
   if (!paths.length) return [];
   const fullUrls = paths.map(p =>
@@ -329,6 +408,7 @@ function diff(state, scope, items, keyFn, fpFn, buildNotificationFn) {
 async function runSync() {
   const state = loadState();
   const wv = new WebView();
+  // Cargamos un recurso ligero del mismo origen para inicializar el contexto WebKit de cookies
   await wv.loadURL(`${BASE_URL}/learn/api/v1/utilities/timeUntilBbSessionInactive?forceLogout=false`);
 
   const me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
@@ -336,14 +416,13 @@ async function runSync() {
     throw new Error("SESSION_EXPIRED");
   }
 
-  const userId = me.id;
-  const given = (me.name && me.name.given) || "";
-  const family = (me.name && me.name.family) || "";
-  saveUserInfo({ userId, displayName: `${given} ${family}`.trim() || me.userName || userId });
+  const userInfo = await resolveUserInfo(wv, me);
+  const userId = userInfo.userId;
 
   state.runCounter = (state.runCounter || 0) + 1;
   const fullContentScan = (state.runCounter % 4 === 1);
 
+  // 1) Obtener asignaturas activas
   const membershipsResp = await evaluateApiInWebView(
     wv,
     `/learn/api/v1/users/${encodeURIComponent(userId)}/memberships?expand=course.effectiveAvailability,courseRole&includeCount=true&limit=10000`
@@ -368,11 +447,14 @@ async function runSync() {
   for (const course of courses) {
     const cid = course.id;
 
+    // 2, 3 y 5 en paralelo dentro de un único lote WebKit por asignatura (mucho más rápido en Atajos de iOS)
+    const [annResp, gradesResp, convCounts] = await evaluateBatchInWebView(wv, [
+      `/learn/api/v1/courses/${encodeURIComponent(cid)}/announcements?limit=25&offset=0&sort=${encodeURIComponent("startDateRestriction(desc)")}`,
+      `/learn/api/v1/courses/${encodeURIComponent(cid)}/gradebook/grades?userId=${encodeURIComponent(userId)}&limit=100&offset=0&expand=${encodeURIComponent("lastAttempt,column")}&includeNoGradeItems=true`,
+      `/learn/api/v1/courses/${encodeURIComponent(cid)}/conversations/counts`
+    ]);
+
     // 2) Anuncios
-    const annResp = await evaluateApiInWebView(
-      wv,
-      `/learn/api/v1/courses/${encodeURIComponent(cid)}/announcements?limit=25&offset=0&sort=${encodeURIComponent("startDateRestriction(desc)")}`
-    );
     const announcements = ((annResp && annResp.results) || []).filter(a => !a.isDraft);
     newNotifications.push(...diff(
       state,
@@ -399,10 +481,6 @@ async function runSync() {
     ));
 
     // 3) Calificaciones
-    const gradesResp = await evaluateApiInWebView(
-      wv,
-      `/learn/api/v1/courses/${encodeURIComponent(cid)}/gradebook/grades?userId=${encodeURIComponent(userId)}&limit=100&offset=0&expand=${encodeURIComponent("lastAttempt,column")}&includeNoGradeItems=true`
-    );
     const grades = ((gradesResp && gradesResp.results) || []).filter(g => {
       const col = g.column || {};
       return col.visible !== false && col.gradesReleased !== false;
@@ -459,7 +537,7 @@ async function runSync() {
       }
     ));
 
-    // 4) Contenidos
+    // 4) Contenidos (recorrido de árbol de carpetas)
     const isBaselineContent = !state.seen[`init:content:${cid}`];
     const collectedNodes = [];
     await walkCourseContent(wv, cid, "ROOT", "", 0, fullContentScan || isBaselineContent, state, collectedNodes);
@@ -507,10 +585,6 @@ async function runSync() {
     }
 
     // 5) Mensajes por asignatura
-    const convCounts = await evaluateApiInWebView(
-      wv,
-      `/learn/api/v1/courses/${encodeURIComponent(cid)}/conversations/counts`
-    );
     if (convCounts && typeof convCounts.unreadCount === "number") {
       const unread = convCounts.unreadCount;
       const msgKey = `conv:course:${cid}`;
@@ -543,6 +617,7 @@ async function runSync() {
     }
   }
 
+  // Enviar notificaciones nativas de iOS
   for (const item of newNotifications) {
     await sendNotification(item);
   }
@@ -624,6 +699,20 @@ function contentUrl(cid, contentId, handler) {
 async function showAppMenu() {
   const state = loadState();
   let user = getUserInfo();
+
+  // Si estaba guardado el ID interno (_xxxx_1) de una versión anterior, actualizar al nombre real
+  if (user && (!user.displayName || user.displayName.startsWith("_") || user.displayName === user.userId)) {
+    try {
+      const wv = new WebView();
+      await wv.loadURL(`${BASE_URL}/learn/api/v1/utilities/timeUntilBbSessionInactive?forceLogout=false`);
+      const me = await evaluateApiInWebView(wv, "/learn/api/v1/users/me");
+      if (me && me.id) {
+        user = await resolveUserInfo(wv, me);
+      }
+    } catch (e) {
+      // Ignorar si falla
+    }
+  }
 
   const alert = new Alert();
   alert.title = "🔔 NotifAula para iOS";
@@ -708,7 +797,8 @@ function buildWidget(state, user, sessionExpired) {
   const w = new ListWidget();
   w.backgroundColor = new Color("#0055A5");
   w.setPadding(14, 16, 14, 16);
-  w.refreshAfterDate = new Date(Date.now() + MIN_AUTO_INTERVAL_MS);
+  // Solicitar a iOS WidgetKit refresco tras 5 minutos
+  w.refreshAfterDate = new Date(Date.now() + WIDGET_REFRESH_MS);
 
   const header = w.addText("🔔 NotifAula");
   header.font = Font.boldSystemFont(14);
@@ -749,10 +839,11 @@ async function main() {
   if (config.runsInApp) {
     await showAppMenu();
   } else if (config.runsInWidget) {
+    // Ejecutado automáticamente por un Widget de Scriptable en la pantalla de inicio de iOS
     let expired = false;
     try {
       const state = loadState();
-      if (!state.lastPoll || Date.now() - state.lastPoll >= MIN_AUTO_INTERVAL_MS) {
+      if (!state.lastPoll || Date.now() - state.lastPoll >= SHORTCUT_DEBOUNCE_MS) {
         await runSync();
       }
     } catch (e) {
@@ -763,9 +854,10 @@ async function main() {
     }
     Script.setWidget(buildWidget(loadState(), getUserInfo(), expired));
   } else {
+    // Ejecutado en segundo plano desde Atajos de iOS (Shortcuts)
     try {
       const state = loadState();
-      if (!state.lastPoll || Date.now() - state.lastPoll >= MIN_AUTO_INTERVAL_MS) {
+      if (!state.lastPoll || Date.now() - state.lastPoll >= SHORTCUT_DEBOUNCE_MS) {
         await runSync();
       }
     } catch (e) {
